@@ -130,7 +130,7 @@ const EditorPage: React.FC = () => {
     // Network listeners
     const handleOnline = () => {
       setOnline(true);
-      addToast({ type: 'info', title: '🌐 Internet Restored', message: 'Synchronizing changes...', duration: 3000 });
+      addToast({ type: 'success', title: '🌐 Internet Restored', message: 'You are back online.', duration: 3000 });
       const t = localStorage.getItem('accessToken');
       if (t && ydocRef.current) {
         reconnectAttemptsRef.current = 0;
