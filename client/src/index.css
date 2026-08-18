@@ -376,3 +376,40 @@ body {
   font-weight: 500;
   margin-bottom: 0.5rem;
 }
+
+/* ============================
+   Collaborative Cursors
+   ============================ */
+.ProseMirror-yjs-cursor {
+  position: absolute;
+  border-left: 2px solid black; /* overridden dynamically */
+  border-right: 2px solid black;
+  margin-left: -2px;
+  margin-right: -2px;
+  pointer-events: none;
+  word-break: normal;
+  z-index: 50;
+}
+
+.ProseMirror-yjs-cursor > div {
+  position: absolute;
+  top: -1.4em;
+  left: -2px;
+  font-size: 11px;
+  background-color: rgb(250, 129, 0); /* overridden dynamically */
+  font-family: var(--font-family-sans);
+  font-weight: 600;
+  line-height: normal;
+  user-select: none;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: opacity 0.2s;
+}
+
+.ProseMirror-yjs-cursor:hover > div {
+  opacity: 1;
+}

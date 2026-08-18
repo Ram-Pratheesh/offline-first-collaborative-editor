@@ -105,16 +105,20 @@ export const generateTrackedChangeSummary = async (
       return desc;
     }).join('\n');
 
-    const prompt = `You are a collaborative document editor assistant. Below is a REAL per-user change log from a collaborative editing session. Each user's actual typed text has been tracked separately by the server.
+    const prompt = `You are a collaborative document editor assistant. Below is a REAL per-user change log from a collaborative editing session. Each user's actual typed text has been tracked SEPARATELY by the server — the tracking is per-user, so each user's section below contains ONLY their own changes.
 
 Document Title: "${documentTitle}"
 
-=== PER-USER CHANGES (server-tracked) ===
+=== PER-USER CHANGES (server-tracked, each section is ONE specific user) ===
 ${userDescriptions}
 
-IMPORTANT: The tracked text above is RAW keystroke data. It may contain:
+CRITICAL ATTRIBUTION RULES:
+- Each section above belongs to EXACTLY ONE user. The text listed under a user's name was typed ONLY by that user.
+- You MUST attribute changes ONLY to the user whose section they appear in. NEVER attribute text from one user's section to another user.
+- If User A's section says they typed "hello world" and User B's section says they typed "foo bar", then User A typed "hello world" and User B typed "foo bar". Period. Do NOT mix them.
+
+The tracked text above is RAW keystroke data. It may contain:
 - Characters concatenated without spaces (e.g. "thiswastypedwhenedgewasonline" should be read as "this was typed when edge was online")
-- Individual letters separated by spaces (e.g. "t h i s w a s" should be read as "this was")
 - Minor spelling issues from typos
 Your job is to RECONSTRUCT the intended readable text and present it cleanly.
 
@@ -127,7 +131,7 @@ Based on this REAL tracked data, generate a response in the following JSON forma
       "changes": ["Specific description of what THIS user typed, quoting their CLEANED-UP readable text"]
     }
   ],
-  "importantAdditions": ["Short cleaned-up plain-text quotes of notable content that was added"],
+  "importantAdditions": [],
   "removedContent": ["Short cleaned-up plain-text quotes of significant content that was removed, if any. Ignore single characters or very short deletions as those are just typo corrections."],
   "noEditsLost": true,
   "totalEdits": ${perUserChanges.length}
@@ -136,12 +140,13 @@ Based on this REAL tracked data, generate a response in the following JSON forma
 Rules:
 1. NEVER include HTML tags. Only plain readable text.
 2. Use each person's ACTUAL NAME from the tracked data above.
-3. Attribute each person's changes ONLY based on the tracked data — do NOT guess or mix up attribution.
+3. STRICTLY attribute each person's changes ONLY to the user whose tracked section they appear in. This is the most important rule. NEVER mix up who typed what.
 4. If someone typed while offline, explicitly say so: e.g. "Som typed 'xyz' while offline, which was merged when he reconnected."
-5. ALWAYS clean up and reconstruct proper readable sentences from the raw tracked data. Never show raw concatenated characters or spaced-out individual letters.
+5. ALWAYS clean up and reconstruct proper readable sentences from the raw tracked data.
 6. When quoting text, quote the CLEANED UP version (e.g. "this was typed when chrome was online"), NOT the raw tracked form.
-7. Ignore single-character or 2-character deletions in removedContent — those are just backspace typo corrections, not meaningful removals.
-8. Keep the tone friendly and informative.`;
+7. Ignore single-character or 2-character deletions in removedContent — those are just backspace typo corrections.
+8. Keep importantAdditions as an empty array — do not populate it.
+9. Keep the tone friendly and informative.`;
 
     const result = await model.generateContent(prompt);
     const response = result.response;
@@ -150,10 +155,13 @@ Rules:
     const cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const parsed = JSON.parse(cleanText) as ChangeSummary;
 
+    // Ensure importantAdditions is always empty
+    parsed.importantAdditions = [];
+
     return parsed;
   } catch (error) {
     console.error('Tracked AI summary generation failed:', error);
-    // Fallback
+    // Fallback — use only the raw tracked data per-user, never mix
     return {
       summary: `${perUserChanges.length} contributor(s) made changes to this document.`,
       contributorChanges: perUserChanges.map((u) => ({
@@ -164,7 +172,7 @@ Rules:
           u.deletedText ? `Deleted: "${u.deletedText.substring(0, 200)}"` : '',
         ].filter(Boolean),
       })),
-      importantAdditions: perUserChanges.filter((u) => u.insertedText).map((u) => u.insertedText.substring(0, 200)),
+      importantAdditions: [],
       removedContent: perUserChanges.filter((u) => u.deletedText).map((u) => u.deletedText.substring(0, 200)),
       noEditsLost: true,
       totalEdits: perUserChanges.length,

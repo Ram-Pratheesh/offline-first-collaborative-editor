@@ -22,11 +22,8 @@ export const Avatar: React.FC<AvatarProps> = ({
   className = '',
 }) => {
   const initials = name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+    ? name.substring(0, 2).toUpperCase()
+    : 'U';
 
   return (
     <div className={`relative inline-flex ${className}`}>
@@ -38,12 +35,8 @@ export const Avatar: React.FC<AvatarProps> = ({
         />
       ) : (
         <div
-          className={`
-            ${sizeClasses[size]} rounded-full 
-            gradient-purple-blue
-            flex items-center justify-center font-semibold text-white
-            ring-2 ring-bg-tertiary
-          `}
+          className={`${sizeClasses[size]} rounded-full flex items-center justify-center font-bold text-white ring-2 ring-bg-tertiary`}
+          style={{ background: 'linear-gradient(135deg, #ff508a, #7147ed)' }}
         >
           {initials}
         </div>

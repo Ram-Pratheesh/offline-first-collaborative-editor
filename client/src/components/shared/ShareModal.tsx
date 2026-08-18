@@ -36,6 +36,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   const { addToast } = useNotificationStore();
 
   const shareableLink = `${window.location.origin}/document/${doc._id}`;
+  const uniqueCollaborators = Array.from(
+    new Map(doc.collaborators.map((c) => [c.user._id, c])).values()
+  );
 
   const handleCopyLink = useCallback(async () => {
     try {
@@ -142,16 +145,16 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               duration: 0.2,
               ease: 'easeOut',
             }}
-            className="
-              relative
-              glass-strong
-              rounded-2xl
-              shadow-2xl
-              overflow-hidden
-            "
             style={{
               width: '760px',
               maxWidth: 'calc(100vw - 48px)',
+              background: 'rgba(255, 255, 255, 0.98)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid #ebe6f0',
+              borderRadius: '24px',
+              boxShadow: '0 24px 50px rgba(94, 55, 143, 0.12)',
+              overflow: 'hidden',
+              position: 'relative',
             }}
           >
 
@@ -160,22 +163,20 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             {/* ==================================================== */}
 
             <div
-              className="
-                flex
-                items-center
-                justify-between
-                border-b
-                border-border-subtle
-              "
+              className="flex items-center justify-between"
               style={{
-                minHeight: '68px',
+                minHeight: '74px',
                 padding: '0 28px',
+                borderBottom: '1px solid #ebe6f0',
+                background: '#ffffff',
               }}
             >
               <h2
-                className="text-xl font-semibold text-text-primary"
                 style={{
                   margin: 0,
+                  fontSize: '22px',
+                  fontWeight: 800,
+                  color: '#171432',
                 }}
               >
                 Share Document
@@ -183,24 +184,21 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
               <button
                 onClick={onClose}
-                className="
-                  rounded-lg
-                  text-text-muted
-                  hover:text-text-primary
-                  hover:bg-bg-card
-                  transition-colors
-                  cursor-pointer
-                "
                 style={{
-                  width: '36px',
-                  height: '36px',
+                  width: '40px',
+                  height: '40px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  border: 0,
+                  borderRadius: '12px',
+                  background: '#faf7ff',
+                  color: '#656180',
+                  cursor: 'pointer',
                 }}
                 aria-label="Close"
               >
-                <X className="w-5 h-5" />
+                <X size={22} />
               </button>
             </div>
 
@@ -242,7 +240,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                   />
 
                   <span
-                    className="text-sm font-semibold text-text-secondary"
+                    style={{
+                      fontSize: '15px',
+                      fontWeight: 700,
+                      color: '#656180',
+                    }}
                   >
                     Anyone with this link can join
                   </span>
@@ -256,149 +258,113 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                     width: '100%',
                   }}
                 >
-
-                  {/* Link box */}
                   <div
-                    className="
-                      flex
-                      items-center
-                      bg-bg-tertiary
-                      border
-                      border-border-default
-                      rounded-xl
-                    "
                     style={{
-                      height: '52px',
                       flex: 1,
+                      height: '56px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '0 18px',
+                      background: '#faf7ff',
+                      border: '1px solid #ebe6f0',
+                      borderRadius: '14px',
                       minWidth: 0,
-                      padding: '0 16px',
                     }}
                   >
                     <Link2
-                      className="text-text-muted"
                       style={{
-                        width: '18px',
-                        height: '18px',
+                        width: '20px',
+                        height: '20px',
+                        color: '#a19cb5',
                         flexShrink: 0,
-                        marginRight: '10px',
+                        marginRight: '12px',
                       }}
                     />
-
                     <span
-                      className="
-                        text-sm
-                        text-text-secondary
-                        font-mono
-                        truncate
-                      "
+                      style={{
+                        fontSize: '15px',
+                        color: '#656180',
+                        fontFamily: 'monospace',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
                     >
                       {shareableLink}
                     </span>
                   </div>
 
-                  {/* COPY BUTTON */}
                   <button
                     onClick={handleCopyLink}
-                    className="
-                      flex
-                      items-center
-                      justify-center
-                      rounded-xl
-                      text-white
-                      font-semibold
-                      transition-all
-                      cursor-pointer
-                      hover:brightness-110
-                    "
                     style={{
-                      height: '52px',
-                      minWidth: '112px',
-                      padding: '0 20px',
+                      height: '56px',
+                      minWidth: '120px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       gap: '8px',
-
-                      /* Primary purple/blue */
-                      background:
-                        'linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%)',
-
-                      boxShadow:
-                        '0 8px 22px rgba(139, 92, 246, 0.22)',
+                      padding: '0 24px',
+                      border: 0,
+                      borderRadius: '14px',
+                      color: '#ffffff',
+                      background: 'linear-gradient(90deg, #ff4d86, #803cf0)',
+                      boxShadow: '0 8px 20px rgba(203, 61, 200, 0.2)',
+                      fontSize: '16px',
+                      fontWeight: 800,
+                      cursor: 'pointer',
                     }}
                   >
                     {copied ? (
                       <>
-                        <Check
-                          style={{
-                            width: '18px',
-                            height: '18px',
-                          }}
-                        />
+                        <Check size={20} />
                         <span>Copied</span>
                       </>
                     ) : (
                       <>
-                        <Copy
-                          style={{
-                            width: '18px',
-                            height: '18px',
-                          }}
-                        />
+                        <Copy size={20} />
                         <span>Copy</span>
                       </>
                     )}
                   </button>
                 </div>
 
-                {/* Description */}
                 <p
-                  className="text-xs text-text-muted"
                   style={{
-                    margin: '14px 0 0 0',
-                    lineHeight: '1.7',
+                    margin: '16px 0 0 0',
+                    fontSize: '14px',
+                    color: '#8a849d',
+                    lineHeight: '1.6',
                     maxWidth: '680px',
                   }}
                 >
-                  Send this link to collaborators through WhatsApp,
-                  Telegram, email, or any messaging app. They'll need
-                  to sign in to access the document.
+                  Send this link to collaborators through WhatsApp, Telegram, email, or any messaging app. They'll need to sign in to access the document.
                 </p>
               </div>
 
-              {/* ================================================== */}
-              {/* PEOPLE WITH ACCESS */}
-              {/* ================================================== */}
-
               <div>
-
-                {/* Section heading */}
                 <div
                   className="flex items-center justify-between"
-                  style={{
-                    marginBottom: '14px',
-                  }}
+                  style={{ marginBottom: '16px' }}
                 >
                   <p
-                    className="
-                      text-sm
-                      font-semibold
-                      text-text-secondary
-                    "
                     style={{
                       margin: 0,
+                      fontSize: '16px',
+                      fontWeight: 800,
+                      color: '#171432',
                     }}
                   >
                     People with access
                   </p>
 
-                  {doc.collaborators.length === 0 ? (
-                    <span className="text-xs text-text-muted">
+                  {uniqueCollaborators.length === 0 ? (
+                    <span style={{ fontSize: '14px', color: '#8a849d', fontWeight: 600 }}>
                       Only you
                     </span>
                   ) : (
-                    <span className="text-xs text-text-muted">
-                      {doc.collaborators.length}{' '}
-                      {doc.collaborators.length === 1
-                        ? 'collaborator'
-                        : 'collaborators'}
+                    <span style={{ fontSize: '14px', color: '#8a849d', fontWeight: 600 }}>
+                      {uniqueCollaborators.length}{' '}
+                      {uniqueCollaborators.length === 1 ? 'collaborator' : 'collaborators'}
                     </span>
                   )}
                 </div>
@@ -408,206 +374,112 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 {/* ================================================= */}
 
                 <div
-                  className="
-                    flex
-                    items-center
-                    justify-between
-                    bg-bg-card
-                    border
-                    border-border-subtle
-                    rounded-xl
-                  "
+                  className="flex items-center justify-between"
                   style={{
-                    minHeight: '78px',
-                    padding: '16px 18px',
-                    marginBottom:
-                      doc.collaborators.length === 0 ? '12px' : '12px',
+                    minHeight: '80px',
+                    padding: '16px 20px',
+                    marginBottom: '14px',
+                    background: '#ffffff',
+                    border: '1px solid #ebe6f0',
+                    borderRadius: '16px',
+                    boxShadow: '0 4px 14px rgba(94, 55, 143, 0.03)',
                   }}
                 >
-                  {/* Owner information */}
-                  <div
-                    className="flex items-center min-w-0"
-                    style={{
-                      gap: '14px',
-                    }}
-                  >
-                    <Avatar
-                      src={doc.owner.avatar}
-                      name={doc.owner.name}
-                      size="sm"
-                    />
-
-                    <div
-                      className="min-w-0"
-                    >
-                      <p
-                        className="
-                          text-sm
-                          font-medium
-                          text-text-primary
-                          truncate
-                        "
-                        style={{
-                          margin: 0,
-                        }}
-                      >
+                  <div className="flex items-center min-w-0" style={{ gap: '16px' }}>
+                    <Avatar src={doc.owner.avatar} name={doc.owner.name} size="sm" />
+                    <div className="min-w-0">
+                      <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#171432', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {doc.owner.name}
                       </p>
-
-                      <p
-                        className="
-                          text-xs
-                          text-text-muted
-                          truncate
-                        "
-                        style={{
-                          margin: '5px 0 0 0',
-                        }}
-                      >
+                      <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#8a849d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {doc.owner.email}
                       </p>
                     </div>
                   </div>
 
-                  {/* Owner badge */}
-                  <Badge variant="purple">
-                    <Shield
-                      className="w-3 h-3"
-                      style={{
-                        marginRight: '5px',
-                      }}
-                    />
+                  <span
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '7px 12px',
+                      borderRadius: '20px',
+                      background: '#f5efff',
+                      color: '#8b42ed',
+                      fontSize: '13px',
+                      fontWeight: 800,
+                    }}
+                  >
+                    <Shield size={14} />
                     Owner
-                  </Badge>
+                  </span>
                 </div>
 
                 {/* ================================================= */}
                 {/* COLLABORATORS */}
                 {/* ================================================= */}
 
-                {doc.collaborators.map((collab) => (
+                {uniqueCollaborators.map((collab) => (
                   <div
                     key={collab.user._id}
-                    className="
-                      flex
-                      items-center
-                      justify-between
-                      bg-bg-card
-                      border
-                      border-border-subtle
-                      rounded-xl
-                    "
+                    className="flex items-center justify-between"
                     style={{
-                      minHeight: '78px',
-                      padding: '16px 18px',
-                      marginBottom: '12px',
+                      minHeight: '80px',
+                      padding: '16px 20px',
+                      marginBottom: '14px',
+                      background: '#ffffff',
+                      border: '1px solid #ebe6f0',
+                      borderRadius: '16px',
+                      boxShadow: '0 4px 14px rgba(94, 55, 143, 0.03)',
                     }}
                   >
-                    {/* User */}
-                    <div
-                      className="flex items-center min-w-0"
-                      style={{
-                        gap: '14px',
-                      }}
-                    >
-                      <Avatar
-                        src={collab.user.avatar}
-                        name={collab.user.name}
-                        size="sm"
-                      />
-
+                    <div className="flex items-center min-w-0" style={{ gap: '16px' }}>
+                      <Avatar src={collab.user.avatar} name={collab.user.name} size="sm" />
                       <div className="min-w-0">
-                        <p
-                          className="
-                            text-sm
-                            font-medium
-                            text-text-primary
-                            truncate
-                          "
-                          style={{
-                            margin: 0,
-                          }}
-                        >
+                        <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#171432', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {collab.user.name}
                         </p>
-
-                        <p
-                          className="
-                            text-xs
-                            text-text-muted
-                            truncate
-                          "
-                          style={{
-                            margin: '5px 0 0 0',
-                          }}
-                        >
+                        <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#8a849d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {collab.user.email}
                         </p>
                       </div>
                     </div>
 
-                    {/* Permission */}
-                    <div
-                      className="flex items-center"
-                      style={{
-                        gap: '12px',
-                      }}
-                    >
-                      <Badge
-                        variant={
-                          collab.permission === 'editor'
-                            ? 'blue'
-                            : 'default'
-                        }
+                    <div className="flex items-center" style={{ gap: '16px' }}>
+                      <span
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '7px 12px',
+                          borderRadius: '20px',
+                          background: collab.permission === 'editor' ? '#eef6ff' : '#f4f4f5',
+                          color: collab.permission === 'editor' ? '#2563eb' : '#52525b',
+                          fontSize: '13px',
+                          fontWeight: 800,
+                        }}
                       >
-                        {collab.permission === 'editor' ? (
-                          <Edit3
-                            className="w-3 h-3"
-                            style={{
-                              marginRight: '5px',
-                            }}
-                          />
-                        ) : (
-                          <Eye
-                            className="w-3 h-3"
-                            style={{
-                              marginRight: '5px',
-                            }}
-                          />
-                        )}
-
-                        {collab.permission === 'editor'
-                          ? 'Editor'
-                          : 'Viewer'}
-                      </Badge>
+                        {collab.permission === 'editor' ? <Edit3 size={14} /> : <Eye size={14} />}
+                        {collab.permission === 'editor' ? 'Editor' : 'Viewer'}
+                      </span>
 
                       <button
-                        onClick={() =>
-                          handleRemove(collab.user._id)
-                        }
-                        className="
-                          rounded-lg
-                          text-text-muted
-                          hover:text-error
-                          hover:bg-bg-tertiary
-                          transition-colors
-                          cursor-pointer
-                        "
+                        onClick={() => handleRemove(collab.user._id)}
                         style={{
-                          width: '32px',
-                          height: '32px',
+                          width: '36px',
+                          height: '36px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
+                          border: 0,
+                          borderRadius: '10px',
+                          background: '#fff0f3',
+                          color: '#f43f5e',
+                          cursor: 'pointer',
                         }}
                         aria-label={`Remove ${collab.user.name}`}
                       >
-                        <Trash2
-                          style={{
-                            width: '16px',
-                            height: '16px',
-                          }}
-                        />
+                        <Trash2 size={18} />
                       </button>
                     </div>
                   </div>
@@ -617,39 +489,25 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 {/* EMPTY STATE */}
                 {/* ================================================= */}
 
-                {doc.collaborators.length === 0 && (
+                {uniqueCollaborators.length === 0 && (
                   <div
-                    className="
-                      flex
-                      flex-col
-                      items-center
-                      justify-center
-                      rounded-xl
-                      border
-                      border-dashed
-                      border-border-default
-                    "
                     style={{
-                      minHeight: '86px',
-                      padding: '16px 20px',
+                      minHeight: '100px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: '#faf7ff',
+                      border: '1px dashed #d1cadd',
+                      borderRadius: '16px',
                       textAlign: 'center',
+                      padding: '24px',
                     }}
                   >
-                    <p
-                      className="text-sm text-text-muted"
-                      style={{
-                        margin: 0,
-                      }}
-                    >
+                    <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#656180' }}>
                       No collaborators yet
                     </p>
-
-                    <p
-                      className="text-xs text-text-muted"
-                      style={{
-                        margin: '6px 0 0 0',
-                      }}
-                    >
+                    <p style={{ margin: '6px 0 0 0', fontSize: '14px', color: '#8a849d' }}>
                       Share the link above to invite people.
                     </p>
                   </div>
