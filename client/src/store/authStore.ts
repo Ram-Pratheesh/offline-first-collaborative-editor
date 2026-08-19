@@ -90,11 +90,20 @@ export const useAuthStore = create<AuthState>((set) => ({
       const user = await authService.getMe();
       localStorage.setItem('user', JSON.stringify(user));
       set({ user, isAuthenticated: true });
-    } catch {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      set({ user: null, isAuthenticated: false });
+    } catch (error: any) {
+      // If the server is actively rejecting the token (401/403), log out.
+      // If it's a network error (server offline), keep the user logged in using cached data!
+      if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        set({ user: null, isAuthenticated: false });
+      } else {
+        const cachedUser = JSON.parse(localStorage.getItem('user') || 'null');
+        if (cachedUser) {
+          set({ user: cachedUser, isAuthenticated: true });
+        }
+      }
     }
   },
 

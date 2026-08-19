@@ -27,8 +27,8 @@ const ToolbarButton: React.FC<{
     className={`
       rounded-lg transition-all duration-150 cursor-pointer
       ${isActive
-        ? 'bg-indigo-primary/20 text-indigo-light'
-        : 'text-text-secondary hover:text-text-primary hover:bg-bg-card'
+        ? 'bg-[#ffffff] text-[#171432] shadow-sm'
+        : 'text-[#d6d3df] hover:text-[#ffffff] hover:bg-white/10'
       }
       disabled:opacity-30 disabled:cursor-not-allowed
     `}

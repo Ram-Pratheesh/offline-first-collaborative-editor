@@ -53,24 +53,45 @@ export const Modal: React.FC<ModalProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', duration: 0.3, bounce: 0.1 }}
-            className={`
-              relative glass-strong rounded-2xl shadow-2xl
-              w-full ${sizeClasses[size]}
-              max-h-[85vh] overflow-y-auto
-            `}
+            className={`relative w-full ${sizeClasses[size]} max-h-[85vh] overflow-y-auto`}
+            style={{
+              background: '#ffffff',
+              borderRadius: '24px',
+              border: '1px solid #ebe6f0',
+              boxShadow: '0 24px 64px rgba(94, 55, 143, 0.16)',
+            }}
           >
             {title && (
-              <div className="flex items-center justify-between border-b border-border-subtle" style={{ padding: '1rem 1.5rem' }}>
-                <h2 className="text-lg font-semibold text-text-primary">{title}</h2>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '20px 28px',
+                  borderBottom: '1px solid #ebe6f0',
+                }}
+              >
+                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#171432' }}>{title}</h2>
                 <button
                   onClick={onClose}
-                  className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-card transition-colors cursor-pointer"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '32px',
+                    height: '32px',
+                    border: 0,
+                    borderRadius: '8px',
+                    background: '#faf7ff',
+                    color: '#656180',
+                    cursor: 'pointer',
+                  }}
                 >
-                  <X className="w-5 h-5" />
+                  <X size={18} />
                 </button>
               </div>
             )}
-            <div style={{ padding: '1.5rem' }}>{children}</div>
+            <div style={{ padding: '24px 28px' }}>{children}</div>
           </motion.div>
         </div>
       )}

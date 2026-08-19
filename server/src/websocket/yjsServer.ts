@@ -86,13 +86,13 @@ function flushChangeLog(key: string) {
   if (!pending) return;
   pendingChanges.delete(key);
 
-  const insertedText = pending.insertedText.trim();
+  const insertedText = pending.insertedText;
   const deletedText = pending.deleted.join(' ').trim();
 
   console.log(`📝 ChangeLog [${pending.userName}]: inserted="${insertedText}" | deleted="${deletedText}" | offline=${pending.isOffline}`);
 
   // Save insertions
-  if (insertedText.length > 0) {
+  if (insertedText.trim().length > 0) {
     ChangeLogModel.create({
       documentId: pending.docName,
       userId: pending.userId,
@@ -118,7 +118,7 @@ function flushChangeLog(key: string) {
 
 function broadcastToRoom(
   docName: string,
-  message: Uint8Array,
+  message: Uint8Array | string,
   exclude?: WebSocket
 ): void {
   const room = connections.get(docName);
@@ -239,7 +239,7 @@ export function setupYjsWebSocket(server: http.Server): void {
         if (str.startsWith('{')) {
           const msg = JSON.parse(str);
           if (msg.type === 'awareness') {
-            broadcastToRoom(docName!, Buffer.from(str), ws);
+            broadcastToRoom(docName!, str, ws);
             return;
           } else if (msg.type === 'sync-request') {
             // Client is asking for missing updates. Compute them using the client's State Vector.

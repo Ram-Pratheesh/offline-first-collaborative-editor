@@ -17,37 +17,52 @@ export const Input: React.FC<InputProps> = ({
   const inputId = id || label?.toLowerCase().replace(/\s+/g, '-');
 
   return (
-    <div className="flex flex-col" style={{ gap: '0.625rem' }}>
+    <div className={`flex flex-col ${className}`} style={{ gap: '12px' }}>
       {label && (
         <label
           htmlFor={inputId}
-          className="block text-sm font-medium text-text-primary mb-1"
+          style={{ display: 'block', fontSize: '15px', fontWeight: 600, color: '#2b2747' }}
         >
           {label}
         </label>
       )}
-      <div className="relative flex items-center">
+      <div 
+        style={{ 
+          height: '64px', 
+          display: 'grid', 
+          gridTemplateColumns: icon ? '40px minmax(0, 1fr)' : 'minmax(0, 1fr)', 
+          alignItems: 'center', 
+          boxSizing: 'border-box', 
+          padding: icon ? '0 24px' : '0 24px', 
+          border: error ? '1px solid #f43f5e' : '1px solid #dedbe8', 
+          borderRadius: '16px', 
+          background: '#fff',
+          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.02)'
+        }}
+      >
         {icon && (
-          <div className="absolute left-4 text-text-muted pointer-events-none flex items-center justify-center">
+          <div style={{ color: '#7935f5', display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
             {icon}
           </div>
         )}
         <input
           id={inputId}
-          className={`
-            w-full h-12 bg-bg-tertiary border border-border-default rounded-xl
-            text-text-primary placeholder-text-muted
-            focus:outline-none focus:border-indigo-primary focus:ring-2 focus:ring-indigo-primary/20
-            transition-all duration-200 shadow-sm
-            ${error ? 'border-error focus:border-error focus:ring-error/20' : ''}
-            ${className}
-          `}
-          style={{ paddingLeft: icon ? '3.25rem' : '1rem', paddingRight: '1rem' }}
+          style={{ 
+            width: '100%', 
+            minWidth: 0, 
+            height: '100%', 
+            padding: 0, 
+            border: 0, 
+            outline: 'none', 
+            background: 'transparent', 
+            color: '#282441', 
+            fontSize: '16px' 
+          }}
           {...props}
         />
       </div>
       {error && (
-        <p className="text-xs text-error font-medium">{error}</p>
+        <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#f43f5e' }}>{error}</p>
       )}
     </div>
   );

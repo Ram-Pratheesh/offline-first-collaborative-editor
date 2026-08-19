@@ -41,6 +41,7 @@ const MetricsDashboard: React.FC = () => {
     syncLatencySamples, lastRecoveryTimeMs, recoveryTimeSamples,
     totalMergeAttempts, successfulMerges,
     lastAiSummaryTimeMs, aiSummaryTimeSamples,
+    lastConsistency,
     getLatencyStats, getRecoveryStats, getMergeSuccessRate,
     clearAll,
   } = useMetricsStore();
@@ -81,6 +82,7 @@ const MetricsDashboard: React.FC = () => {
         successful: successfulMerges,
         successRate: getMergeSuccessRate(),
       },
+      documentConsistency: lastConsistency,
       networkUsage: {
         messagesSent: wsMessagesSent,
         messagesReceived: wsMessagesReceived,
@@ -111,12 +113,30 @@ const MetricsDashboard: React.FC = () => {
     icon: React.ReactNode;
     children: React.ReactNode;
   }> = ({ title, icon, children }) => (
-    <div className="bg-bg-card border border-border-subtle rounded-xl p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-8 h-8 rounded-lg bg-bg-elevated flex items-center justify-center">
+    <div
+      style={{
+        background: '#ffffff',
+        border: '1px solid #ebe6f0',
+        borderRadius: '20px',
+        padding: '24px',
+        boxShadow: '0 8px 24px rgba(94, 55, 143, 0.04)',
+      }}
+    >
+      <div className="flex items-center gap-3 mb-5">
+        <div
+          style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '12px',
+            background: '#faf7ff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
           {icon}
         </div>
-        <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
+        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#171432' }}>{title}</h3>
       </div>
       {children}
     </div>
@@ -127,61 +147,130 @@ const MetricsDashboard: React.FC = () => {
     value,
     highlight,
   }) => (
-    <div className="flex items-center justify-between py-1.5">
-      <span className="text-xs text-text-secondary">{label}</span>
-      <span className={`text-sm font-medium ${highlight ? 'text-success' : 'text-text-primary'}`}>
+    <div className="flex items-center justify-between py-2">
+      <span style={{ fontSize: '14px', color: '#656180', fontWeight: 500 }}>{label}</span>
+      <span style={{ fontSize: '15px', fontWeight: 700, color: highlight ? '#10bf7a' : '#171432' }}>
         {value}
       </span>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-bg-primary">
+    <div
+      style={{
+        minHeight: '100vh',
+        background: 'radial-gradient(circle at 10% 92%, #ffd7e8 0, transparent 24%), radial-gradient(circle at 88% 95%, #ded1ff 0, transparent 23%), linear-gradient(135deg, #fff7f8 0%, #fdf7ff 50%, #f3e8ff 100%)',
+      }}
+    >
       {/* Header */}
-      <header className="sticky top-0 z-40 glass border-b border-border-subtle">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+      <header
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 40,
+          background: 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(20px)',
+          borderBottom: '1px solid #ebe6f0',
+        }}
+      >
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-[72px] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/dashboard')}
-              className="p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-card transition-colors cursor-pointer"
+              style={{
+                width: '40px',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: 0,
+                borderRadius: '12px',
+                background: '#faf7ff',
+                color: '#656180',
+                cursor: 'pointer',
+              }}
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft size={20} />
             </button>
-            <Activity className="w-5 h-5 text-purple-light" />
-            <h1 className="text-lg font-semibold text-text-primary">Collaboration Diagnostics</h1>
+            <Activity size={24} color="#803cf0" />
+            <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#171432' }}>
+              Collaboration Diagnostics
+            </h1>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={clearAll} title="Reset Metrics">
-              <RotateCcw className="w-4 h-4" />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={clearAll}
+              title="Reset Metrics"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '0 16px',
+                height: '40px',
+                borderRadius: '12px',
+                border: '1px solid #ebe6f0',
+                background: '#ffffff',
+                color: '#656180',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              <RotateCcw size={16} />
               <span className="hidden sm:inline">Reset</span>
-            </Button>
-            <Button size="sm" onClick={exportMetrics}>
-              <Download className="w-4 h-4" />
+            </button>
+            <button
+              onClick={exportMetrics}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '0 20px',
+                height: '40px',
+                borderRadius: '12px',
+                border: 0,
+                background: 'linear-gradient(90deg, #ff4d86, #803cf0)',
+                color: '#ffffff',
+                fontSize: '14px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(203, 61, 200, 0.2)',
+              }}
+            >
+              <Download size={16} />
               <span className="hidden sm:inline">Export JSON</span>
-            </Button>
+            </button>
           </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
         {/* Current Status */}
-        <div className="flex items-center gap-4 flex-wrap">
+        <div
+          className="flex items-center gap-6 flex-wrap"
+          style={{
+            background: '#ffffff',
+            border: '1px solid #ebe6f0',
+            borderRadius: '16px',
+            padding: '16px 24px',
+            boxShadow: '0 4px 12px rgba(94, 55, 143, 0.03)',
+          }}
+        >
           <div className="flex items-center gap-2">
-            <span className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-success' : 'bg-warning'}`} />
-            <span className="text-sm text-text-secondary">{isOnline ? 'Online' : 'Offline'}</span>
+            <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: isOnline ? '#10bf7a' : '#e59b22' }} />
+            <span style={{ fontSize: '14px', fontWeight: 600, color: '#656180' }}>{isOnline ? 'Online' : 'Offline'}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className={`w-2.5 h-2.5 rounded-full ${isWebSocketConnected ? 'bg-success' : 'bg-text-muted'}`} />
-            <span className="text-sm text-text-secondary">WebSocket {isWebSocketConnected ? 'Connected' : 'Disconnected'}</span>
+            <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: isWebSocketConnected ? '#10bf7a' : '#a19cb5' }} />
+            <span style={{ fontSize: '14px', fontWeight: 600, color: '#656180' }}>WebSocket {isWebSocketConnected ? 'Connected' : 'Disconnected'}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className={`w-2.5 h-2.5 rounded-full ${
-              syncStatus === 'synced' ? 'bg-success' :
-              syncStatus === 'syncing' ? 'bg-info animate-pulse' :
-              syncStatus === 'offline' ? 'bg-warning' : 'bg-text-muted'
-            }`} />
-            <span className="text-sm text-text-secondary capitalize">{syncStatus}</span>
+            <span style={{
+              width: '10px', height: '10px', borderRadius: '50%',
+              background: syncStatus === 'synced' ? '#10bf7a' : syncStatus === 'syncing' ? '#4b93f4' : syncStatus === 'offline' ? '#e59b22' : '#a19cb5'
+            }} />
+            <span style={{ fontSize: '14px', fontWeight: 600, color: '#656180', textTransform: 'capitalize' }}>{syncStatus}</span>
           </div>
         </div>
 
@@ -224,7 +313,23 @@ const MetricsDashboard: React.FC = () => {
             )}
           </MetricCard>
 
-          {/* C. Merge Success Rate */}
+          {/* C. Document Consistency */}
+          <MetricCard title="Document Consistency" icon={<Activity className="w-4 h-4 text-success" />}>
+            {lastConsistency ? (
+              <>
+                <StatRow label="Clients Checked" value={`${lastConsistency.clientsChecked}`} />
+                <StatRow label="Consistent Clients" value={`${lastConsistency.consistentClients}`} highlight />
+                <StatRow label="Consistency Rate" value={`${lastConsistency.consistencyRate}%`} highlight={lastConsistency.consistencyRate === 100} />
+                <StatRow label="Status" value={lastConsistency.status} highlight={lastConsistency.status === 'CONSISTENT'} />
+              </>
+            ) : (
+              <p className="text-xs text-text-muted italic py-4 text-center">
+                Open a document in multiple tabs to measure consistency
+              </p>
+            )}
+          </MetricCard>
+
+          {/* D. Merge Success Rate */}
           <MetricCard title="Merge Reliability" icon={<Shield className="w-4 h-4 text-success" />}>
             <StatRow label="Total Attempts" value={`${totalMergeAttempts}`} />
             <StatRow label="Successful" value={`${successfulMerges}`} highlight />
@@ -275,37 +380,45 @@ const MetricsDashboard: React.FC = () => {
 
         {/* Test Scenarios */}
         <div>
-          <h2 className="text-lg font-semibold text-text-primary mb-4">Test Scenarios</h2>
-          <p className="text-sm text-text-secondary mb-4">
+          <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#171432', marginBottom: '8px' }}>Test Scenarios</h2>
+          <p style={{ fontSize: '15px', color: '#656180', marginBottom: '24px' }}>
             Click each scenario to toggle its status (pending → pass → fail → pending).
             Results are included in the JSON export.
           </p>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {scenarios.map((scenario) => (
               <motion.div
                 key={scenario.id}
-                className="bg-bg-card border border-border-subtle rounded-xl p-4 cursor-pointer hover:border-border-accent transition-colors"
                 onClick={() => toggleScenario(scenario.id)}
                 whileTap={{ scale: 0.99 }}
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #ebe6f0',
+                  borderRadius: '16px',
+                  padding: '20px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(94, 55, 143, 0.03)',
+                  transition: 'border-color 0.2s',
+                }}
               >
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 shrink-0">
+                <div className="flex items-start gap-4">
+                  <div className="mt-1 shrink-0">
                     {scenario.status === 'pass' ? (
-                      <CheckCircle className="w-5 h-5 text-success" />
+                      <CheckCircle size={24} color="#10bf7a" />
                     ) : scenario.status === 'fail' ? (
-                      <XCircle className="w-5 h-5 text-error" />
+                      <XCircle size={24} color="#f43f5e" />
                     ) : (
-                      <div className="w-5 h-5 rounded-full border-2 border-text-muted" />
+                      <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid #d1cadd' }} />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-xs font-mono text-text-muted">TEST {scenario.id}</span>
-                      <span className="text-sm font-medium text-text-primary">{scenario.name}</span>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span style={{ fontSize: '12px', fontFamily: 'monospace', fontWeight: 700, color: '#a19cb5', background: '#faf7ff', padding: '2px 6px', borderRadius: '4px' }}>TEST {scenario.id}</span>
+                      <span style={{ fontSize: '16px', fontWeight: 700, color: '#171432' }}>{scenario.name}</span>
                     </div>
-                    <p className="text-xs text-text-secondary">{scenario.description}</p>
-                    <p className="text-xs text-text-muted mt-1">
-                      <span className="font-medium">Expected:</span> {scenario.expected}
+                    <p style={{ fontSize: '14px', color: '#656180', margin: '4px 0 8px 0' }}>{scenario.description}</p>
+                    <p style={{ fontSize: '13px', color: '#8a849d', margin: 0 }}>
+                      <span style={{ fontWeight: 600, color: '#171432' }}>Expected:</span> {scenario.expected}
                     </p>
                   </div>
                 </div>
@@ -315,32 +428,40 @@ const MetricsDashboard: React.FC = () => {
         </div>
 
         {/* Summary */}
-        <div className="bg-bg-card border border-border-subtle rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-text-primary mb-3">Summary</h3>
+        <div
+          style={{
+            background: '#ffffff',
+            border: '1px solid #ebe6f0',
+            borderRadius: '20px',
+            padding: '24px',
+            boxShadow: '0 8px 24px rgba(94, 55, 143, 0.04)',
+          }}
+        >
+          <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: 800, color: '#171432' }}>Test Summary</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
             <div>
-              <div className="text-2xl font-bold text-success">
+              <div style={{ fontSize: '32px', fontWeight: 800, color: '#10bf7a' }}>
                 {scenarios.filter((s) => s.status === 'pass').length}
               </div>
-              <div className="text-xs text-text-muted">Passed</div>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#8a849d', marginTop: '4px' }}>Passed</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-error">
+              <div style={{ fontSize: '32px', fontWeight: 800, color: '#f43f5e' }}>
                 {scenarios.filter((s) => s.status === 'fail').length}
               </div>
-              <div className="text-xs text-text-muted">Failed</div>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#8a849d', marginTop: '4px' }}>Failed</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-text-secondary">
+              <div style={{ fontSize: '32px', fontWeight: 800, color: '#a19cb5' }}>
                 {scenarios.filter((s) => s.status === 'pending').length}
               </div>
-              <div className="text-xs text-text-muted">Pending</div>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#8a849d', marginTop: '4px' }}>Pending</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-text-primary">
+              <div style={{ fontSize: '32px', fontWeight: 800, color: '#171432' }}>
                 {scenarios.length}
               </div>
-              <div className="text-xs text-text-muted">Total</div>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#8a849d', marginTop: '4px' }}>Total</div>
             </div>
           </div>
         </div>

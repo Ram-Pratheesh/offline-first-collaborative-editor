@@ -96,9 +96,9 @@ export const summarizeTrackedChanges = async (req: AuthRequest, res: Response): 
     for (const [, entry] of userChangesMap) {
       perUserChanges.push({
         userName: entry.userName,
-        insertedText: entry.inserts.join('').substring(0, 2000),
-        deletedText: entry.deletes.join('').substring(0, 1000),
-        offlineText: entry.offlineEdits.join('').substring(0, 1000),
+        insertedText: entry.inserts.join(' ').substring(0, 2000),
+        deletedText: entry.deletes.join(' ').substring(0, 1000),
+        offlineText: entry.offlineEdits.join(' ').substring(0, 1000),
       });
     }
 

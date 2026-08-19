@@ -10,8 +10,7 @@ import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import EditorPage from './pages/EditorPage';
-import ProfilePage from './pages/ProfilePage';
-import SettingsPage from './pages/SettingsPage';
+
 import NotFoundPage from './pages/NotFoundPage';
 import MetricsDashboard from './pages/MetricsDashboard';
 
@@ -65,8 +64,7 @@ const App: React.FC = () => {
           {/* Protected Routes */}
           <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/document/:id" element={<ProtectedRoute><EditorPage /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+
           <Route path="/diagnostics" element={<ProtectedRoute><MetricsDashboard /></ProtectedRoute>} />
 
           {/* Redirects */}

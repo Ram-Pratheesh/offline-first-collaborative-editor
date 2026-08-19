@@ -10,11 +10,13 @@ interface DiagnosticsPanelProps {
 
 const StatusDot: React.FC<{ active: boolean; color?: string }> = ({ active, color }) => (
   <span
-    className={`inline-block w-2 h-2 rounded-full ${
-      active
-        ? color || 'bg-success'
-        : 'bg-text-muted'
-    }`}
+    style={{
+      display: 'inline-block',
+      width: '8px',
+      height: '8px',
+      borderRadius: '50%',
+      background: active ? (color || '#10bf7a') : '#d1cadd',
+    }}
   />
 );
 
@@ -28,7 +30,7 @@ export const DiagnosticsPanel: React.FC<DiagnosticsPanelProps> = ({ onClose }) =
   const {
     syncLatencySamples, lastRecoveryTimeMs,
     totalMergeAttempts, successfulMerges,
-    lastAiSummaryTimeMs,
+    lastAiSummaryTimeMs, lastConsistency,
     getLatencyStats, getMergeSuccessRate,
   } = useMetricsStore();
 
@@ -42,60 +44,90 @@ export const DiagnosticsPanel: React.FC<DiagnosticsPanelProps> = ({ onClose }) =
 
   return (
     <motion.div
-      initial={{ x: '100%', opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: '100%', opacity: 0 }}
-      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      className="w-72 border-l border-border-subtle bg-bg-secondary overflow-y-auto shrink-0 diagnostics-panel"
+      initial={{ y: -10, opacity: 0, scale: 0.95 }}
+      animate={{ y: 0, opacity: 1, scale: 1 }}
+      exit={{ y: -10, opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.2 }}
+      style={{
+        position: 'fixed',
+        top: '120px',
+        right: '40px',
+        zIndex: 100,
+        width: '320px',
+        maxHeight: 'calc(100vh - 160px)',
+        overflowY: 'auto',
+        background: 'rgba(255, 255, 255, 0.96)',
+        backdropFilter: 'blur(20px)',
+        border: '1px solid #ebe6f0',
+        borderRadius: '20px',
+        boxShadow: '0 16px 40px rgba(94, 55, 143, 0.12)',
+      }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-border-subtle">
-        <div className="flex items-center gap-2">
-          <Activity className="w-4 h-4 text-purple-light" />
-          <span className="text-sm font-semibold text-text-primary">Diagnostics</span>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '16px 20px',
+          borderBottom: '1px solid #ebe6f0',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Activity size={18} color="#803cf0" />
+          <span style={{ fontSize: '15px', fontWeight: 800, color: '#171432' }}>
+            Diagnostics
+          </span>
         </div>
         <button
           onClick={onClose}
-          className="p-1 rounded text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '28px',
+            height: '28px',
+            border: 0,
+            borderRadius: '8px',
+            background: '#faf7ff',
+            color: '#656180',
+            cursor: 'pointer',
+          }}
         >
-          <X className="w-4 h-4" />
+          <X size={16} />
         </button>
       </div>
 
-      <div className="p-3 space-y-4">
+      <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
         {/* Connection */}
         <section>
-          <h4 className="text-[0.625rem] uppercase tracking-wider text-text-muted mb-2 font-semibold">Connection</h4>
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-secondary">Internet</span>
-              <div className="flex items-center gap-1.5">
+          <h4 style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8a849d', marginBottom: '12px', fontWeight: 800, margin: 0 }}>Connection</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Internet</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <StatusDot active={isOnline} />
-                <span className="text-xs font-medium text-text-primary">{isOnline ? 'ONLINE' : 'OFFLINE'}</span>
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</span>
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-secondary">WebSocket</span>
-              <div className="flex items-center gap-1.5">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>WebSocket</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <StatusDot active={isWebSocketConnected} />
-                <span className="text-xs font-medium text-text-primary">{isWebSocketConnected ? 'CONNECTED' : 'DISCONNECTED'}</span>
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>{isWebSocketConnected ? 'CONNECTED' : 'DISCONNECTED'}</span>
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-secondary">Sync Status</span>
-              <span className={`text-xs font-medium ${
-                syncStatus === 'synced' ? 'text-success' :
-                syncStatus === 'syncing' ? 'text-info' :
-                syncStatus === 'offline' ? 'text-warning' : 'text-text-muted'
-              }`}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Sync Status</span>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: syncStatus === 'synced' ? '#10bf7a' : syncStatus === 'syncing' ? '#4b93f4' : syncStatus === 'offline' ? '#e59b22' : '#8a849d' }}>
                 {syncStatus.toUpperCase()}
               </span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-secondary">Persistence</span>
-              <div className="flex items-center gap-1.5">
-                <StatusDot active={true} color="bg-success" />
-                <span className="text-xs font-medium text-text-primary">ACTIVE</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Persistence</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <StatusDot active={true} color="#10bf7a" />
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>ACTIVE</span>
               </div>
             </div>
           </div>
@@ -103,22 +135,48 @@ export const DiagnosticsPanel: React.FC<DiagnosticsPanelProps> = ({ onClose }) =
 
         {/* Document Info */}
         <section>
-          <h4 className="text-[0.625rem] uppercase tracking-wider text-text-muted mb-2 font-semibold">Document</h4>
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-secondary">Room ID</span>
-              <span className="text-xs font-mono text-text-primary truncate max-w-[120px]" title={documentId || ''}>
+          <h4 style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8a849d', marginBottom: '12px', fontWeight: 800, margin: 0 }}>Document</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Room ID</span>
+              <span style={{ fontSize: '13px', fontFamily: 'monospace', fontWeight: 700, color: '#171432' }} title={documentId || ''}>
                 {documentId ? `...${documentId.slice(-8)}` : 'N/A'}
               </span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-secondary">Users Online</span>
-              <span className="text-xs font-medium text-text-primary">{activeUsers.length}</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Users Online</span>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>{activeUsers.length}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-secondary">Last Sync</span>
-              <span className="text-xs text-text-primary">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Last Sync</span>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>
                 {lastSyncedAt ? lastSyncedAt.toLocaleTimeString() : 'Never'}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* Consistency */}
+        <section>
+          <h4 style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8a849d', marginBottom: '12px', fontWeight: 800, margin: 0 }}>Consistency (CRDT)</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Status</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <StatusDot active={lastConsistency?.status === 'CONSISTENT'} color={lastConsistency?.status === 'CONSISTENT' ? '#10bf7a' : '#e59b22'} />
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>{lastConsistency?.status || 'N/A'}</span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Rate</span>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: lastConsistency?.consistencyRate === 100 ? '#10bf7a' : '#171432' }}>
+                {lastConsistency ? `${lastConsistency.consistencyRate}%` : 'N/A'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Clients Matched</span>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>
+                {lastConsistency ? `${lastConsistency.consistentClients} / ${lastConsistency.clientsChecked}` : 'N/A'}
               </span>
             </div>
           </div>
@@ -126,77 +184,77 @@ export const DiagnosticsPanel: React.FC<DiagnosticsPanelProps> = ({ onClose }) =
 
         {/* Network */}
         <section>
-          <h4 className="text-[0.625rem] uppercase tracking-wider text-text-muted mb-2 font-semibold">Network</h4>
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-secondary">Messages Sent</span>
-              <span className="text-xs font-medium text-text-primary">{wsMessagesSent}</span>
+          <h4 style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8a849d', marginBottom: '12px', fontWeight: 800, margin: 0 }}>Network</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Messages Sent</span>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>{wsMessagesSent}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-secondary">Messages Received</span>
-              <span className="text-xs font-medium text-text-primary">{wsMessagesReceived}</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Messages Received</span>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>{wsMessagesReceived}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-secondary">Bytes Sent</span>
-              <span className="text-xs font-medium text-text-primary">{formatBytes(wsBytesSent)}</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Bytes Sent</span>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>{formatBytes(wsBytesSent)}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-secondary">Bytes Received</span>
-              <span className="text-xs font-medium text-text-primary">{formatBytes(wsBytesReceived)}</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Bytes Received</span>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>{formatBytes(wsBytesReceived)}</span>
             </div>
           </div>
         </section>
 
         {/* Latency */}
         <section>
-          <h4 className="text-[0.625rem] uppercase tracking-wider text-text-muted mb-2 font-semibold">Sync Latency</h4>
+          <h4 style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8a849d', marginBottom: '12px', fontWeight: 800, margin: 0 }}>Sync Latency</h4>
           {latencyStats ? (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-text-secondary">Min</span>
-                <span className="text-xs font-medium text-text-primary">{latencyStats.min} ms</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Min</span>
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>{latencyStats.min} ms</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-text-secondary">Max</span>
-                <span className="text-xs font-medium text-text-primary">{latencyStats.max} ms</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Max</span>
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>{latencyStats.max} ms</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-text-secondary">Average</span>
-                <span className="text-xs font-medium text-text-primary">{latencyStats.avg} ms</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Average</span>
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>{latencyStats.avg} ms</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-text-secondary">Median</span>
-                <span className="text-xs font-medium text-text-primary">{latencyStats.median} ms</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Median</span>
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>{latencyStats.median} ms</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-text-secondary">Samples</span>
-                <span className="text-xs font-medium text-text-primary">{latencyStats.count}</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Samples</span>
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>{latencyStats.count}</span>
               </div>
             </div>
           ) : (
-            <p className="text-xs text-text-muted italic">No samples yet</p>
+            <p style={{ fontSize: '13px', color: '#8a849d', fontStyle: 'italic', marginTop: '12px', margin: '12px 0 0 0' }}>No samples yet</p>
           )}
         </section>
 
         {/* Merge & Recovery */}
         <section>
-          <h4 className="text-[0.625rem] uppercase tracking-wider text-text-muted mb-2 font-semibold">Reliability</h4>
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-secondary">Merge Attempts</span>
-              <span className="text-xs font-medium text-text-primary">{totalMergeAttempts}</span>
+          <h4 style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8a849d', marginBottom: '12px', fontWeight: 800, margin: 0 }}>Reliability</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Merge Attempts</span>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>{totalMergeAttempts}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-secondary">Successful</span>
-              <span className="text-xs font-medium text-success">{successfulMerges}</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Successful</span>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: '#10bf7a' }}>{successfulMerges}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-secondary">Success Rate</span>
-              <span className="text-xs font-medium text-text-primary">{getMergeSuccessRate()}%</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Success Rate</span>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>{getMergeSuccessRate()}%</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-secondary">Last Recovery</span>
-              <span className="text-xs font-medium text-text-primary">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Last Recovery</span>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>
                 {lastRecoveryTimeMs ? `${(lastRecoveryTimeMs / 1000).toFixed(2)}s` : 'N/A'}
               </span>
             </div>
@@ -205,10 +263,10 @@ export const DiagnosticsPanel: React.FC<DiagnosticsPanelProps> = ({ onClose }) =
 
         {/* AI */}
         <section>
-          <h4 className="text-[0.625rem] uppercase tracking-wider text-text-muted mb-2 font-semibold">AI Summary</h4>
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-text-secondary">Last Generation</span>
-            <span className="text-xs font-medium text-text-primary">
+          <h4 style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8a849d', marginBottom: '12px', fontWeight: 800, margin: 0 }}>AI Summary</h4>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px' }}>
+            <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Last Generation</span>
+            <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>
               {lastAiSummaryTimeMs ? `${(lastAiSummaryTimeMs / 1000).toFixed(2)}s` : 'N/A'}
             </span>
           </div>

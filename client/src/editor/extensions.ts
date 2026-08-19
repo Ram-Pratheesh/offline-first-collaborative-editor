@@ -11,8 +11,9 @@ import TextAlign from '@tiptap/extension-text-align';
 import Highlight from '@tiptap/extension-highlight';
 import type { Extensions } from '@tiptap/react';
 import * as Y from 'yjs';
-import { ySyncPlugin, yUndoPlugin, undo, redo } from 'y-prosemirror';
+import { ySyncPlugin, yUndoPlugin, yCursorPlugin, undo, redo } from 'y-prosemirror';
 import { Extension, type KeyboardShortcutCommand } from '@tiptap/core';
+import type { Awareness } from 'y-protocols/awareness';
 
 const CURSOR_COLORS = [
   '#f87171', '#fb923c', '#facc15', '#4ade80',
@@ -38,16 +39,28 @@ const YjsCollaboration = Extension.create({
     return {
       document: null as Y.Doc | null,
       field: 'default',
+      awareness: null as Awareness | null,
     };
   },
 
   addProseMirrorPlugins() {
     const ydoc = this.options.document as Y.Doc;
     const fragment = ydoc.getXmlFragment(this.options.field);
-    return [
+    const awareness = this.options.awareness as Awareness | null;
+
+    const plugins = [
       ySyncPlugin(fragment),
       yUndoPlugin(),
     ];
+
+    // Add cursor plugin if awareness is available
+    if (awareness) {
+      plugins.push(
+        yCursorPlugin(awareness)
+      );
+    }
+
+    return plugins;
   },
 
   addKeyboardShortcuts() {
@@ -59,7 +72,7 @@ const YjsCollaboration = Extension.create({
   },
 });
 
-export function createExtensions(ydoc: Y.Doc): Extensions {
+export function createExtensions(ydoc: Y.Doc, awareness?: Awareness): Extensions {
   return [
     StarterKit.configure({
       // @ts-ignore - Tiptap v2/v3 typings mismatch, but 'history' is required to disable the default undo manager
@@ -67,6 +80,7 @@ export function createExtensions(ydoc: Y.Doc): Extensions {
     }),
     YjsCollaboration.configure({
       document: ydoc,
+      awareness: awareness || null,
     }),
     TaskList,
     TaskItem.configure({
@@ -106,3 +120,4 @@ export function createFallbackExtensions(): Extensions {
     }),
   ];
 }
+
