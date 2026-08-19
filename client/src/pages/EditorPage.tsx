@@ -38,6 +38,21 @@ import { useNotificationStore } from '../store/notificationStore';
 import { documentService } from '../services/documentService';
 import type { Document as DocType, ChangeSummary } from '../types';
 
+function cyrb53(str: string, seed = 0): string {
+  let h1 = 0xdeadbeef ^ seed,
+    h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0, ch; i < str.length; i++) {
+    ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
+}
+
 const EditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -52,7 +67,7 @@ const EditorPage: React.FC = () => {
   } = useEditorStore();
   const {
     addLatencySample, setOfflineStart, recordRecovery,
-    recordMergeAttempt, recordAiSummaryTime,
+    recordMergeAttempt, recordAiSummaryTime, updateConsistency,
   } = useMetricsStore();
 
   const [doc, setDoc] = useState<DocType | null>(null);
@@ -75,6 +90,7 @@ const EditorPage: React.FC = () => {
   const titleTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const reconnectAttemptsRef = useRef(0);
+  const lastSyncedHashRef = useRef<string | null>(null);
 
   // Diagnostics keyboard shortcut (Ctrl+Shift+D)
   useEffect(() => {
@@ -110,6 +126,7 @@ const EditorPage: React.FC = () => {
       color: cursorColors[colorIndex],
       colorLight: cursorColors[colorIndex] + '40',
     });
+    aw.setLocalStateField('consistency', { documentHash: cyrb53(doc.getXmlFragment('default').toString()) });
     awarenessRef.current = aw;
     setAwareness(aw);
 
@@ -240,6 +257,9 @@ const EditorPage: React.FC = () => {
           const now = new Date();
           setLastSynced(now);
           recordMergeAttempt(true);
+          
+          // Update last synced hash
+          lastSyncedHashRef.current = cyrb53(ydoc.getXmlFragment('default').toString());
 
           // Record offline recovery if applicable
           recordRecovery();
@@ -257,6 +277,7 @@ const EditorPage: React.FC = () => {
 
       ws.onclose = (event) => {
         setWebSocketConnected(false);
+        setOfflineStart(); // Start tracking offline recovery time
         if (!destroyedRef.current && navigator.onLine && event.code !== 4001 && event.code !== 4002 && event.code !== 4003) {
           const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
           reconnectAttemptsRef.current++;
@@ -268,11 +289,20 @@ const EditorPage: React.FC = () => {
 
       ws.onerror = () => {
         console.error('❌ WebSocket error');
+        setOfflineStart();
       };
 
       // Forward local updates
       const updateHandler = (update: Uint8Array, origin: any) => {
         console.log(`[Yjs] Local update detected, origin:`, origin);
+        
+        // Update local consistency hash
+        const docText = ydoc.getXmlFragment('default').toString();
+        const docHash = cyrb53(docText);
+        if (awarenessRef.current) {
+          awarenessRef.current.setLocalStateField('consistency', { documentHash: docHash });
+        }
+
         if (origin !== wsRef.current && ws.readyState === WebSocket.OPEN) {
           console.log(`[Yjs] Sending update of size ${update.byteLength} to server`);
           ws.send(update);
@@ -286,6 +316,42 @@ const EditorPage: React.FC = () => {
 
       // Forward local awareness changes to server
       const awarenessHandler = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[] }, origin: any) => {
+        if (awarenessRef.current) {
+          // Compute convergence metric
+          const states = Array.from(awarenessRef.current.getStates().values());
+          let totalChecked = 0;
+          const hashCounts = new Map<string, number>();
+          let localHash = awarenessRef.current.getLocalState()?.consistency?.documentHash;
+          
+          states.forEach((state: any) => {
+            if (state.consistency?.documentHash) {
+              totalChecked++;
+              const hash = state.consistency.documentHash;
+              hashCounts.set(hash, (hashCounts.get(hash) || 0) + 1);
+            }
+          });
+
+          if (totalChecked > 0 && localHash) {
+            let consistentWithLocal = hashCounts.get(localHash) || 0;
+            let status: 'CONSISTENT' | 'DIVERGENT' = consistentWithLocal === totalChecked ? 'CONSISTENT' : 'DIVERGENT';
+
+            // If offline and we are the only one left in awareness, compare against the last synced server state
+            if (totalChecked === 1 && wsRef.current?.readyState !== WebSocket.OPEN) {
+              if (lastSyncedHashRef.current && localHash !== lastSyncedHashRef.current) {
+                status = 'DIVERGENT';
+                consistentWithLocal = 0; // We have diverged from the server
+              }
+            }
+
+            updateConsistency({
+              clientsChecked: totalChecked,
+              consistentClients: consistentWithLocal,
+              consistencyRate: Math.round((consistentWithLocal / totalChecked) * 100),
+              status,
+            });
+          }
+        }
+
         if (origin === ws) return; // Don't echo back server updates
         const changedClients = added.concat(updated, removed);
         if (awarenessRef.current && ws.readyState === WebSocket.OPEN) {
@@ -326,8 +392,8 @@ const EditorPage: React.FC = () => {
         setTitle(d.title);
         setLoadError(null);
       } catch (error: any) {
-        if (!navigator.onLine) {
-          // Offline — use cached title or show generic
+        if (!navigator.onLine || !error.response || error.response.status >= 500) {
+          // Offline, Server Down, or Vite Proxy Error (502/504) — use cached title or show generic
           setLoadError(null);
           setTitle('Offline Document');
           setDoc({
@@ -470,6 +536,7 @@ const EditorPage: React.FC = () => {
       minHeight: '100vh',
       padding: '14px',
       boxSizing: 'border-box',
+      overflowX: 'hidden',
       background:
         'radial-gradient(circle at 10% 92%, #ffd7e8 0, transparent 24%), radial-gradient(circle at 88% 95%, #ded1ff 0, transparent 23%), linear-gradient(135deg, #fff7f8 0%, #fdf7ff 50%, #f3e8ff 100%)',
     }}
@@ -478,12 +545,14 @@ const EditorPage: React.FC = () => {
 
     <header
       style={{
-        height: '100px',
+        minHeight: '100px',
+        height: 'auto',
         display: 'flex',
+        flexWrap: 'wrap',
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: '20px',
-        padding: '0 20px',
+        padding: '16px 20px',
         boxSizing: 'border-box',
         border: '1px solid #ebe6f0',
         borderRadius: '22px',
@@ -495,9 +564,10 @@ const EditorPage: React.FC = () => {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '16px',
+          flexWrap: 'wrap',
+          gap: '12px',
           minWidth: 0,
-          flex: 1,
+          flex: '1 1 auto',
         }}
       >
         <button
@@ -540,9 +610,10 @@ const EditorPage: React.FC = () => {
           onChange={(event) => handleTitleChange(event.target.value)}
           placeholder="Untitled Document"
           style={{
-            width: '220px',
-            maxWidth: '40vw',
-            minWidth: 0,
+            width: '100%',
+            maxWidth: '200px',
+            minWidth: '100px',
+            flex: '1 1 auto',
             border: 0,
             outline: 0,
             background: 'transparent',
@@ -579,9 +650,12 @@ const EditorPage: React.FC = () => {
       <div
         style={{
           display: 'flex',
+          flexWrap: 'wrap',
           alignItems: 'center',
-          gap: '18px',
-          flexShrink: 0,
+          justifyContent: 'flex-end',
+          gap: '12px',
+          flex: '1 1 auto',
+          minWidth: 0,
         }}
       >
         <div

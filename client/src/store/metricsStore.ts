@@ -5,6 +5,13 @@ export interface LatencySample {
   latencyMs: number;
 }
 
+export interface ConsistencyMetrics {
+  clientsChecked: number;
+  consistentClients: number;
+  consistencyRate: number;
+  status: 'CONSISTENT' | 'DIVERGENT' | 'N/A';
+}
+
 interface MetricsState {
   // Sync latency samples
   syncLatencySamples: LatencySample[];
@@ -22,12 +29,16 @@ interface MetricsState {
   lastAiSummaryTimeMs: number | null;
   aiSummaryTimeSamples: number[];
 
+  // Document Consistency
+  lastConsistency: ConsistencyMetrics | null;
+
   // Actions
   addLatencySample: (latencyMs: number) => void;
   setOfflineStart: () => void;
   recordRecovery: () => void;
   recordMergeAttempt: (success: boolean) => void;
   recordAiSummaryTime: (timeMs: number) => void;
+  updateConsistency: (metrics: ConsistencyMetrics) => void;
   clearAll: () => void;
 
   // Computed
@@ -73,6 +84,7 @@ export const useMetricsStore = create<MetricsState>((set, get) => ({
   successfulMerges: 0,
   lastAiSummaryTimeMs: null,
   aiSummaryTimeSamples: [],
+  lastConsistency: null,
 
   addLatencySample: (latencyMs) =>
     set((s) => ({
@@ -82,7 +94,7 @@ export const useMetricsStore = create<MetricsState>((set, get) => ({
       ],
     })),
 
-  setOfflineStart: () => set({ offlineStartTime: Date.now() }),
+  setOfflineStart: () => set((s) => ({ offlineStartTime: s.offlineStartTime || Date.now() })),
 
   recordRecovery: () => {
     const { offlineStartTime } = get();
@@ -108,6 +120,8 @@ export const useMetricsStore = create<MetricsState>((set, get) => ({
       aiSummaryTimeSamples: [...s.aiSummaryTimeSamples.slice(-49), timeMs],
     })),
 
+  updateConsistency: (metrics) => set({ lastConsistency: metrics }),
+
   clearAll: () =>
     set({
       syncLatencySamples: [],
@@ -118,6 +132,7 @@ export const useMetricsStore = create<MetricsState>((set, get) => ({
       successfulMerges: 0,
       lastAiSummaryTimeMs: null,
       aiSummaryTimeSamples: [],
+      lastConsistency: null,
     }),
 
   getLatencyStats: () => {

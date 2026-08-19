@@ -41,6 +41,7 @@ const MetricsDashboard: React.FC = () => {
     syncLatencySamples, lastRecoveryTimeMs, recoveryTimeSamples,
     totalMergeAttempts, successfulMerges,
     lastAiSummaryTimeMs, aiSummaryTimeSamples,
+    lastConsistency,
     getLatencyStats, getRecoveryStats, getMergeSuccessRate,
     clearAll,
   } = useMetricsStore();
@@ -81,6 +82,7 @@ const MetricsDashboard: React.FC = () => {
         successful: successfulMerges,
         successRate: getMergeSuccessRate(),
       },
+      documentConsistency: lastConsistency,
       networkUsage: {
         messagesSent: wsMessagesSent,
         messagesReceived: wsMessagesReceived,
@@ -311,7 +313,23 @@ const MetricsDashboard: React.FC = () => {
             )}
           </MetricCard>
 
-          {/* C. Merge Success Rate */}
+          {/* C. Document Consistency */}
+          <MetricCard title="Document Consistency" icon={<Activity className="w-4 h-4 text-success" />}>
+            {lastConsistency ? (
+              <>
+                <StatRow label="Clients Checked" value={`${lastConsistency.clientsChecked}`} />
+                <StatRow label="Consistent Clients" value={`${lastConsistency.consistentClients}`} highlight />
+                <StatRow label="Consistency Rate" value={`${lastConsistency.consistencyRate}%`} highlight={lastConsistency.consistencyRate === 100} />
+                <StatRow label="Status" value={lastConsistency.status} highlight={lastConsistency.status === 'CONSISTENT'} />
+              </>
+            ) : (
+              <p className="text-xs text-text-muted italic py-4 text-center">
+                Open a document in multiple tabs to measure consistency
+              </p>
+            )}
+          </MetricCard>
+
+          {/* D. Merge Success Rate */}
           <MetricCard title="Merge Reliability" icon={<Shield className="w-4 h-4 text-success" />}>
             <StatRow label="Total Attempts" value={`${totalMergeAttempts}`} />
             <StatRow label="Successful" value={`${successfulMerges}`} highlight />

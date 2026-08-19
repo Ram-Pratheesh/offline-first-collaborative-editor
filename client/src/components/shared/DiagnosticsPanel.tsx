@@ -30,7 +30,7 @@ export const DiagnosticsPanel: React.FC<DiagnosticsPanelProps> = ({ onClose }) =
   const {
     syncLatencySamples, lastRecoveryTimeMs,
     totalMergeAttempts, successfulMerges,
-    lastAiSummaryTimeMs,
+    lastAiSummaryTimeMs, lastConsistency,
     getLatencyStats, getMergeSuccessRate,
   } = useMetricsStore();
 
@@ -151,6 +151,32 @@ export const DiagnosticsPanel: React.FC<DiagnosticsPanelProps> = ({ onClose }) =
               <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Last Sync</span>
               <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>
                 {lastSyncedAt ? lastSyncedAt.toLocaleTimeString() : 'Never'}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* Consistency */}
+        <section>
+          <h4 style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8a849d', marginBottom: '12px', fontWeight: 800, margin: 0 }}>Consistency (CRDT)</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Status</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <StatusDot active={lastConsistency?.status === 'CONSISTENT'} color={lastConsistency?.status === 'CONSISTENT' ? '#10bf7a' : '#e59b22'} />
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>{lastConsistency?.status || 'N/A'}</span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Rate</span>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: lastConsistency?.consistencyRate === 100 ? '#10bf7a' : '#171432' }}>
+                {lastConsistency ? `${lastConsistency.consistencyRate}%` : 'N/A'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', color: '#656180', fontWeight: 600 }}>Clients Matched</span>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: '#171432' }}>
+                {lastConsistency ? `${lastConsistency.consistentClients} / ${lastConsistency.clientsChecked}` : 'N/A'}
               </span>
             </div>
           </div>

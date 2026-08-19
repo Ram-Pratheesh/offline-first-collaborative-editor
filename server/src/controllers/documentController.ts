@@ -24,13 +24,6 @@ export const createDocument = async (req: AuthRequest, res: Response): Promise<v
       icon: data.icon || '📄',
       owner: req.user!._id,
       lastEditedBy: req.user!._id,
-      versions: [
-        {
-          content: '',
-          editor: req.user!._id,
-          summary: 'Document created',
-        },
-      ],
     });
 
     const populated = await doc.populate([
@@ -80,7 +73,7 @@ export const getDocuments = async (req: AuthRequest, res: Response): Promise<voi
       .populate('owner', 'name email avatar')
       .populate('collaborators.user', 'name email avatar')
       .populate('lastEditedBy', 'name email avatar')
-      .select('-yjsState -versions')
+      .select('-yjsState')
       .sort({ updatedAt: -1 })
       .lean();
 
@@ -376,116 +369,6 @@ export const toggleStar = async (req: AuthRequest, res: Response): Promise<void>
     res.json({ isStarred: !isStarred });
   } catch (error) {
     res.status(500).json({ message: 'Failed to toggle star' });
-  }
-};
-
-export const getVersions = async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const doc = await DocumentModel.findOne({
-      _id: req.params.id,
-      isDeleted: false,
-      $or: [
-        { owner: req.user!._id },
-        { 'collaborators.user': req.user!._id },
-      ],
-    })
-      .select('versions')
-      .populate('versions.editor', 'name email avatar');
-
-    if (!doc) {
-      res.status(404).json({ message: 'Document not found' });
-      return;
-    }
-
-    res.json({ versions: doc.versions.reverse() });
-  } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch versions' });
-  }
-};
-
-export const saveVersion = async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const { content, summary } = req.body;
-
-    const doc = await DocumentModel.findOneAndUpdate(
-      {
-        _id: req.params.id,
-        isDeleted: false,
-        $or: [
-          { owner: req.user!._id },
-          {
-            'collaborators.user': req.user!._id,
-            'collaborators.permission': 'editor',
-          },
-        ],
-      },
-      {
-        $push: {
-          versions: {
-            content: content || '',
-            editor: req.user!._id,
-            summary: summary || 'Manual save',
-          },
-        },
-        content: content || '',
-        lastEditedBy: req.user!._id,
-      },
-      { new: true }
-    );
-
-    if (!doc) {
-      res.status(404).json({ message: 'Document not found or access denied' });
-      return;
-    }
-
-    res.json({ message: 'Version saved' });
-  } catch (error) {
-    res.status(500).json({ message: 'Failed to save version' });
-  }
-};
-
-export const restoreVersion = async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const doc = await DocumentModel.findOne({
-      _id: req.params.id,
-      isDeleted: false,
-      $or: [
-        { owner: req.user!._id },
-        {
-          'collaborators.user': req.user!._id,
-          'collaborators.permission': 'editor',
-        },
-      ],
-    });
-
-    if (!doc) {
-      res.status(404).json({ message: 'Document not found or access denied' });
-      return;
-    }
-
-    const version = doc.versions.find(
-      (v) => v._id.toString() === req.params.versionId
-    );
-
-    if (!version) {
-      res.status(404).json({ message: 'Version not found' });
-      return;
-    }
-
-    doc.content = version.content;
-    doc.lastEditedBy = req.user!._id;
-    doc.versions.push({
-      content: version.content,
-      editor: req.user!._id,
-      summary: `Restored version from ${version.createdAt.toISOString()}`,
-      createdAt: new Date(),
-    } as any);
-
-    await doc.save();
-
-    res.json({ message: 'Version restored', document: doc });
-  } catch (error) {
-    res.status(500).json({ message: 'Failed to restore version' });
   }
 };
 

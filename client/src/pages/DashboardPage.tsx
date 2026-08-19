@@ -38,7 +38,7 @@ const DashboardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('recent');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
   const [profileOpen, setProfileOpen] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newDocTitle, setNewDocTitle] = useState('');
@@ -205,6 +205,28 @@ const DashboardPage: React.FC = () => {
         fontFamily: 'Inter, Arial, sans-serif',
       }}
     >
+      <style>
+        {`
+          @media (max-width: 768px) {
+            .dashboard-main { margin-left: 0 !important; }
+            .dashboard-header { padding: 0 16px !important; gap: 10px !important; }
+            .welcome-section { padding: 30px 20px !important; }
+            .hide-on-mobile { display: none !important; }
+            .new-doc-btn { padding: 0 14px !important; }
+            .sidebar-overlay { 
+              position: fixed; 
+              top: 0; left: 0; right: 0; bottom: 0; 
+              background: rgba(0,0,0,0.5); 
+              z-index: 20; 
+            }
+          }
+        `}
+      </style>
+
+      {sidebarOpen && window.innerWidth <= 768 && (
+        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+      )}
+
       <aside
         style={{
           position: 'fixed',
@@ -405,6 +427,7 @@ const DashboardPage: React.FC = () => {
       </aside>
 
       <div
+        className="dashboard-main"
         style={{
           marginLeft: sidebarWidth,
           transition: 'margin-left .25s ease',
@@ -414,6 +437,7 @@ const DashboardPage: React.FC = () => {
         }}
       >
         <header
+          className="dashboard-header"
           style={{
             height: '84px',
             flexShrink: 0,
@@ -485,6 +509,7 @@ const DashboardPage: React.FC = () => {
 
           <button
             type="button"
+            className="new-doc-btn"
             onClick={() => setShowCreateModal(true)}
             style={{
               height: '48px',
@@ -504,7 +529,7 @@ const DashboardPage: React.FC = () => {
             }}
           >
             <Plus size={20} />
-            New Document
+            <span className="hide-on-mobile">New Document</span>
           </button>
 
           <span
@@ -525,6 +550,7 @@ const DashboardPage: React.FC = () => {
         </header>
 
         <section
+          className="welcome-section"
           style={{
             position: 'relative',
             minHeight: '140px',
@@ -537,6 +563,7 @@ const DashboardPage: React.FC = () => {
           }}
         >
           <span
+            className="hide-on-mobile"
             style={{
               position: 'absolute',
               top: '-190px',
@@ -549,6 +576,7 @@ const DashboardPage: React.FC = () => {
           />
 
           <span
+            className="hide-on-mobile"
             style={{
               position: 'absolute',
               top: '32px',
@@ -573,6 +601,7 @@ const DashboardPage: React.FC = () => {
           </span>
 
           <span
+            className="hide-on-mobile"
             style={{
               position: 'absolute',
               top: '63px',
