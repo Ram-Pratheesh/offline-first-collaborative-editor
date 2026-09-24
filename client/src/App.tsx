@@ -13,6 +13,7 @@ import EditorPage from './pages/EditorPage';
 
 import NotFoundPage from './pages/NotFoundPage';
 import MetricsDashboard from './pages/MetricsDashboard';
+import InspectionWorkspacePage from './pages/InspectionWorkspacePage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -64,6 +65,7 @@ const App: React.FC = () => {
           {/* Protected Routes */}
           <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/document/:id" element={<ProtectedRoute><EditorPage /></ProtectedRoute>} />
+          <Route path="/inspection/:id" element={<ProtectedRoute><InspectionWorkspacePage /></ProtectedRoute>} />
 
           <Route path="/diagnostics" element={<ProtectedRoute><MetricsDashboard /></ProtectedRoute>} />
 

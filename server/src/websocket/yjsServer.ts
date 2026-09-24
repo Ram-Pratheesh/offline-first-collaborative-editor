@@ -5,6 +5,8 @@ import { env } from '../config/env.js';
 import * as Y from 'yjs';
 import { DocumentModel } from '../models/Document.js';
 import { ChangeLogModel } from '../models/ChangeLog.js';
+import { InspectionModel } from '../models/Inspection.js';
+import { ResearchLogModel } from '../models/ResearchLog.js';
 
 const docs = new Map<string, Y.Doc>();
 const connections = new Map<string, Set<{ ws: WebSocket; userId: string; userName: string; connectedAt: number }>>();
@@ -33,11 +35,26 @@ function getYDoc(docName: string): Y.Doc {
   return doc;
 }
 
+function isInspectionRoom(docName: string): boolean {
+  return docName.startsWith('inspection-');
+}
+
+function getInspectionId(docName: string): string {
+  return docName.replace('inspection-', '');
+}
+
 async function loadDocState(docName: string, doc: Y.Doc): Promise<void> {
   try {
-    const dbDoc = await DocumentModel.findById(docName).select('yjsState');
-    if (dbDoc?.yjsState) {
-      Y.applyUpdate(doc, new Uint8Array(dbDoc.yjsState));
+    if (isInspectionRoom(docName)) {
+      const inspection = await InspectionModel.findById(getInspectionId(docName)).select('yjsState');
+      if (inspection?.yjsState) {
+        Y.applyUpdate(doc, new Uint8Array(inspection.yjsState));
+      }
+    } else {
+      const dbDoc = await DocumentModel.findById(docName).select('yjsState');
+      if (dbDoc?.yjsState) {
+        Y.applyUpdate(doc, new Uint8Array(dbDoc.yjsState));
+      }
     }
   } catch (error) {
     console.error(`Failed to load Yjs state for ${docName}:`, error);
@@ -47,9 +64,15 @@ async function loadDocState(docName: string, doc: Y.Doc): Promise<void> {
 async function saveDocState(docName: string, doc: Y.Doc): Promise<void> {
   try {
     const state = Y.encodeStateAsUpdate(doc);
-    await DocumentModel.findByIdAndUpdate(docName, {
-      yjsState: Buffer.from(state),
-    });
+    if (isInspectionRoom(docName)) {
+      await InspectionModel.findByIdAndUpdate(getInspectionId(docName), {
+        yjsState: Buffer.from(state),
+      });
+    } else {
+      await DocumentModel.findByIdAndUpdate(docName, {
+        yjsState: Buffer.from(state),
+      });
+    }
   } catch (error) {
     console.error(`Failed to save Yjs state for ${docName}:`, error);
   }
@@ -116,7 +139,7 @@ function flushChangeLog(key: string) {
   }
 }
 
-function broadcastToRoom(
+export function broadcastToRoom(
   docName: string,
   message: Uint8Array | string,
   exclude?: WebSocket
@@ -170,29 +193,56 @@ export function setupYjsWebSocket(server: http.Server): void {
       }
       userName = user.name;
 
-      // Verify document exists (link-based access — any authenticated user can join)
-      const doc = await DocumentModel.findOne({
-        _id: docName,
-        isDeleted: false,
-      });
-
-      if (!doc) {
-        ws.close(4003, 'Document not found');
-        return;
-      }
-
-      // Auto-add as collaborator if not already owner or collaborator
-      const isOwner = doc.owner.toString() === userId;
-      const isCollaborator = doc.collaborators.some(
-        (c) => c.user.toString() === userId
-      );
-      if (!isOwner && !isCollaborator) {
-        doc.collaborators.push({
-          user: userId as any,
-          permission: 'editor',
-          addedAt: new Date(),
+      // Verify document/inspection exists (link-based access)
+      if (isInspectionRoom(docName!)) {
+        const inspectionId = getInspectionId(docName!);
+        const inspection = await InspectionModel.findOne({
+          _id: inspectionId,
+          isDeleted: false,
         });
-        await doc.save();
+
+        if (!inspection) {
+          ws.close(4003, 'Inspection not found');
+          return;
+        }
+
+        // Auto-add as collaborator
+        const isOwner = inspection.owner.toString() === userId;
+        const isCollaborator = inspection.collaborators.some(
+          (c) => c.user.toString() === userId
+        );
+        if (!isOwner && !isCollaborator) {
+          inspection.collaborators.push({
+            user: userId as any,
+            permission: 'editor',
+            addedAt: new Date(),
+          });
+          await inspection.save();
+        }
+      } else {
+        const doc = await DocumentModel.findOne({
+          _id: docName,
+          isDeleted: false,
+        });
+
+        if (!doc) {
+          ws.close(4003, 'Document not found');
+          return;
+        }
+
+        // Auto-add as collaborator if not already owner or collaborator
+        const isOwner = doc.owner.toString() === userId;
+        const isCollaborator = doc.collaborators.some(
+          (c) => c.user.toString() === userId
+        );
+        if (!isOwner && !isCollaborator) {
+          doc.collaborators.push({
+            user: userId as any,
+            permission: 'editor',
+            addedAt: new Date(),
+          });
+          await doc.save();
+        }
       }
     } catch (error) {
       ws.close(4002, 'Invalid token');
@@ -206,6 +256,16 @@ export function setupYjsWebSocket(server: http.Server): void {
     const lastSeen = lastSeenMap.get(lastSeenKey) || 0;
     const wasOffline = Date.now() - lastSeen > 30000 && lastSeen > 0;
     lastSeenMap.set(lastSeenKey, Date.now());
+
+    // Log reconnection for inspection rooms (research data)
+    if (wasOffline && isInspectionRoom(docName)) {
+      const inspId = getInspectionId(docName);
+      ResearchLogModel.create({
+        inspectionId: inspId,
+        eventType: 'reconnection',
+        data: { userId, userName, offlineDurationMs: Date.now() - lastSeen },
+      }).catch(() => {});
+    }
 
     // Add to room
     if (!connections.has(docName)) {

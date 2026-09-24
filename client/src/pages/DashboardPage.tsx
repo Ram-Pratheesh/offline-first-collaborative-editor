@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   ChevronDown,
   Clock3,
+  ClipboardList,
   FileText,
   FolderOpen,
   LogOut,
@@ -13,7 +14,6 @@ import {
   Plus,
   Search,
   Share2,
-  Sparkles,
   Star,
   Trash2,
   Users,
@@ -22,12 +22,14 @@ import { Avatar, AvatarGroup } from '../components/ui/Avatar';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
+import { ShareInspectionModal } from '../components/inspection/ShareInspectionModal';
 import { useAuthStore } from '../store/authStore';
 import { useNotificationStore } from '../store/notificationStore';
 import { documentService } from '../services/documentService';
-import type { Document } from '../types';
+import { inspectionService } from '../services/inspectionService';
+import type { Document, Inspection } from '../types';
 
-type TabType = 'recent' | 'mine' | 'shared' | 'starred' | 'all';
+type TabType = 'recent' | 'mine' | 'shared' | 'starred' | 'all' | 'inspections';
 
 const DashboardPage: React.FC = () => {
   const { user, logout } = useAuthStore();
@@ -44,6 +46,16 @@ const DashboardPage: React.FC = () => {
   const [newDocTitle, setNewDocTitle] = useState('');
   const [creating, setCreating] = useState(false);
 
+  // Inspection state
+  const [inspections, setInspections] = useState<Inspection[]>([]);
+  const [inspectionsLoading, setInspectionsLoading] = useState(false);
+  const [showCreateInspectionModal, setShowCreateInspectionModal] = useState(false);
+  const [newInspectionTitle, setNewInspectionTitle] = useState('');
+  const [creatingInspection, setCreatingInspection] = useState(false);
+  const [selectedInspectionToShare, setSelectedInspectionToShare] = useState<Inspection | null>(null);
+  const [inspectionToDelete, setInspectionToDelete] = useState<Inspection | null>(null);
+  const [deletingInspection, setDeletingInspection] = useState(false);
+
   const sidebarWidth = sidebarOpen ? 270 : 0;
 
   const tabs: Array<{
@@ -56,6 +68,7 @@ const DashboardPage: React.FC = () => {
       { id: 'shared', label: 'Shared', icon: <Users size={21} /> },
       { id: 'starred', label: 'Starred', icon: <Star size={21} /> },
       { id: 'all', label: 'All Documents', icon: <FolderOpen size={21} /> },
+      { id: 'inspections', label: 'Inspections', icon: <ClipboardList size={21} /> },
     ];
 
   const loadDocuments = async () => {
@@ -92,8 +105,54 @@ const DashboardPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadDocuments();
+    if (activeTab === 'inspections') {
+      loadInspections();
+    } else {
+      loadDocuments();
+    }
   }, [activeTab]);
+
+  const loadInspections = async () => {
+    setInspectionsLoading(true);
+    try {
+      const ins = await inspectionService.getAll();
+      setInspections(ins);
+    } catch {
+      addToast({ type: 'error', title: 'Failed to load inspections' });
+    } finally {
+      setInspectionsLoading(false);
+    }
+  };
+
+  const createInspection = async () => {
+    setCreatingInspection(true);
+    try {
+      const ins = await inspectionService.create(newInspectionTitle || 'Untitled Inspection');
+      addToast({ type: 'success', title: 'Inspection created' });
+      navigate(`/inspection/${ins._id}`);
+    } catch {
+      addToast({ type: 'error', title: 'Failed to create inspection' });
+    } finally {
+      setCreatingInspection(false);
+      setShowCreateInspectionModal(false);
+      setNewInspectionTitle('');
+    }
+  };
+
+  const handleDeleteInspection = async () => {
+    if (!inspectionToDelete) return;
+    setDeletingInspection(true);
+    try {
+      await inspectionService.delete(inspectionToDelete._id);
+      setInspections((prev) => prev.filter((i) => i._id !== inspectionToDelete._id));
+      addToast({ type: 'success', title: 'Inspection deleted' });
+      setInspectionToDelete(null);
+    } catch {
+      addToast({ type: 'error', title: 'Failed to delete inspection' });
+    } finally {
+      setDeletingInspection(false);
+    }
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -532,6 +591,31 @@ const DashboardPage: React.FC = () => {
             <span className="hide-on-mobile">New Document</span>
           </button>
 
+          <button
+            type="button"
+            className="new-doc-btn"
+            onClick={() => setShowCreateInspectionModal(true)}
+            style={{
+              height: '48px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '0 22px',
+              border: 0,
+              borderRadius: '15px',
+              color: '#ffffff',
+              background: 'linear-gradient(90deg, #22c55e, #16a34a)',
+              boxShadow: '0 12px 22px rgba(34,197,94,.22)',
+              fontSize: '15px',
+              fontWeight: 800,
+              whiteSpace: 'nowrap',
+              cursor: 'pointer',
+            }}
+          >
+            <ClipboardList size={20} />
+            <span className="hide-on-mobile">New Inspection</span>
+          </button>
+
           <span
             style={{
               width: '48px',
@@ -731,7 +815,203 @@ const DashboardPage: React.FC = () => {
             </button>
           </div>
 
-          {loading ? (
+          {activeTab === 'inspections' ? (
+            /* ─── Inspection Cards ────────────────────────────────── */
+            inspectionsLoading ? (
+              <p style={{ position: 'relative', color: '#7d7895', padding: '30px' }}>
+                Loading inspections...
+              </p>
+            ) : inspections.length === 0 ? (
+              <div
+                style={{
+                  position: 'relative',
+                  minHeight: '280px',
+                  display: 'grid',
+                  placeItems: 'center',
+                  border: '1px dashed #ded7eb',
+                  borderRadius: '24px',
+                  background: '#ffffff',
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                  <ClipboardList size={48} color="#9d97ae" />
+                  <h3 style={{ margin: 0, color: '#161331', fontSize: '20px' }}>No inspections yet</h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateInspectionModal(true)}
+                    style={{
+                      marginTop: '8px',
+                      border: 0,
+                      borderRadius: '12px',
+                      padding: '12px 20px',
+                      color: '#ffffff',
+                      background: 'linear-gradient(90deg, #22c55e, #16a34a)',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Create inspection
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  position: 'relative',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 280px))',
+                  justifyContent: 'start',
+                  gap: '24px',
+                }}
+              >
+                {inspections.map((ins) => {
+                  const statusColors: Record<string, { bg: string; color: string }> = {
+                    DRAFT: { bg: '#f3f4f6', color: '#6b7280' },
+                    SYNCHRONIZING: { bg: '#eff6ff', color: '#3b82f6' },
+                    REVIEW_REQUIRED: { bg: '#fef3c7', color: '#d97706' },
+                    READY_TO_FINALIZE: { bg: '#ecfdf5', color: '#059669' },
+                    FINALIZED: { bg: '#f0fdf4', color: '#16a34a' },
+                  };
+                  const sc = statusColors[ins.status] || statusColors.DRAFT;
+                  return (
+                    <article
+                      key={ins._id}
+                      onClick={() => navigate(`/inspection/${ins._id}`)}
+                      style={{
+                        height: '210px',
+                        padding: '20px',
+                        boxSizing: 'border-box',
+                        border: '1px solid #d1fae5',
+                        borderRadius: '22px',
+                        background: 'linear-gradient(135deg, #f0fdf4, #ecfdf5)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 8px 24px rgba(34,197,94,0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div
+                          style={{
+                            width: '42px',
+                            height: '42px',
+                            borderRadius: '12px',
+                            background: '#dcfce7',
+                            display: 'grid',
+                            placeItems: 'center',
+                            color: '#16a34a',
+                          }}
+                        >
+                          <ClipboardList size={22} />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: '8px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              background: sc.bg,
+                              color: sc.color,
+                            }}
+                          >
+                            {ins.status.replace('_', ' ')}
+                          </span>
+                          {ins.owner?._id === user?._id && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setInspectionToDelete(ins);
+                              }}
+                              title="Delete inspection"
+                              style={{
+                                border: 0,
+                                background: 'transparent',
+                                color: '#ef4444',
+                                cursor: 'pointer',
+                                padding: '4px',
+                                display: 'grid',
+                                placeItems: 'center',
+                              }}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <h3
+                        style={{
+                          margin: '16px 0 6px',
+                          overflow: 'hidden',
+                          color: '#161331',
+                          fontSize: '18px',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {ins.title}
+                      </h3>
+                      <p style={{ margin: 0, color: '#7c7794', fontSize: '14px' }}>
+                        {ins.locations.length} location{ins.locations.length !== 1 ? 's' : ''} · {formatDate(ins.updatedAt)}
+                      </p>
+                      <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '4px 8px',
+                            borderRadius: '12px',
+                            background: '#dcfce7',
+                            color: '#16a34a',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <Users size={12} />
+                          {ins.collaborators.length + 1} {ins.collaborators.length === 0 ? 'collaborator' : 'collaborators'}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedInspectionToShare(ins);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '5px 10px',
+                            borderRadius: '10px',
+                            border: '1px solid #bbf7d0',
+                            background: '#ffffff',
+                            color: '#16a34a',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <Share2 size={13} />
+                          Share
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )
+          ) : loading ? (
             <p style={{ position: 'relative', color: '#7d7895', padding: '30px' }}>
               Loading documents...
             </p>
@@ -830,6 +1110,91 @@ const DashboardPage: React.FC = () => {
 
             <Button onClick={createDocument} loading={creating}>
               Create document
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Create Inspection Modal */}
+      <Modal
+        isOpen={showCreateInspectionModal}
+        onClose={() => setShowCreateInspectionModal(false)}
+        title="Create Inspection"
+      >
+        <div
+          style={{
+            display: 'grid',
+            gap: '22px',
+            paddingTop: '12px',
+          }}
+        >
+          <Input
+            label="Inspection title"
+            placeholder="e.g. Building A — Structural Inspection"
+            value={newInspectionTitle}
+            onChange={(event) => setNewInspectionTitle(event.target.value)}
+            autoFocus
+          />
+
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '12px',
+            }}
+          >
+            <Button variant="ghost" onClick={() => setShowCreateInspectionModal(false)}>
+              Cancel
+            </Button>
+
+            <Button onClick={createInspection} loading={creatingInspection}>
+              Create inspection
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Share Inspection Modal */}
+      {selectedInspectionToShare && (
+        <ShareInspectionModal
+          isOpen={Boolean(selectedInspectionToShare)}
+          onClose={() => setSelectedInspectionToShare(null)}
+          inspection={selectedInspectionToShare}
+          currentUserId={user?._id || ''}
+          onUpdate={(updated) => {
+            setSelectedInspectionToShare(updated);
+            setInspections((prev) =>
+              prev.map((item) => (item._id === updated._id ? updated : item))
+            );
+          }}
+        />
+      )}
+
+      {/* Delete Inspection Confirmation Modal */}
+      <Modal
+        isOpen={Boolean(inspectionToDelete)}
+        onClose={() => !deletingInspection && setInspectionToDelete(null)}
+        title="Delete Inspection"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingTop: '10px' }}>
+          <p style={{ margin: 0, color: '#4b5563', fontSize: '14px', lineHeight: 1.5 }}>
+            Are you sure you want to delete <strong>{inspectionToDelete?.title}</strong>? This inspection will be removed from your dashboard.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <Button
+              variant="ghost"
+              disabled={deletingInspection}
+              onClick={() => setInspectionToDelete(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              disabled={deletingInspection}
+              onClick={handleDeleteInspection}
+              loading={deletingInspection}
+            >
+              Delete Inspection
             </Button>
           </div>
         </div>
