@@ -29,7 +29,7 @@ export const generateChangeSummary = async (
   documentTitle: string
 ): Promise<ChangeSummary> => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
+    const model = genAI.getGenerativeModel({ model: env.GEMINI_MODEL });
 
     const prompt = `You are a collaborative document editor assistant. Analyze the following collaborative editing session and generate a clear, human-readable summary.
 
@@ -93,7 +93,7 @@ export const generateTrackedChangeSummary = async (
   documentTitle: string
 ): Promise<ChangeSummary> => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
+    const model = genAI.getGenerativeModel({ model: env.GEMINI_MODEL });
 
     // Build a human-readable description of each user's changes
     const userDescriptions = perUserChanges.map((u) => {
@@ -185,7 +185,7 @@ export const generateDocumentSummary = async (
   title: string
 ): Promise<string> => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
+    const model = genAI.getGenerativeModel({ model: env.GEMINI_MODEL });
 
     const prompt = `Summarize the following document in 2-3 sentences. Be concise and informative.
 

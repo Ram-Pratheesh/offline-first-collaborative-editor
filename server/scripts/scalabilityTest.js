@@ -62,11 +62,18 @@ async function runTest(numUsers, WS_URL) {
   for (let i = 0; i < numUsers; i++) {
     const ws = new WebSocket(WS_URL);
     const doc = new Y.Doc();
-    
+
+    const clientState = { ws, doc, id: i, lastSendTime: null };
+
     // Track network metrics
     ws.on('message', (data) => {
       totalMessagesReceived++;
       totalBytesReceived += data.byteLength || data.length;
+      
+      if (clientState.lastSendTime) {
+        latencies.push(Date.now() - clientState.lastSendTime);
+        clientState.lastSendTime = null;
+      }
     });
 
     ws.on('error', (err) => {
@@ -85,10 +92,11 @@ async function runTest(numUsers, WS_URL) {
         ws.send(update);
         totalMessagesSent++;
         totalBytesSent += update.byteLength;
+        clientState.lastSendTime = Date.now();
       }
     });
 
-    clients.push({ ws, doc, id: i });
+    clients.push(clientState);
   }
 
   // Wait for connections to establish
@@ -105,14 +113,9 @@ async function runTest(numUsers, WS_URL) {
   const typingInterval = setInterval(() => {
     clients.forEach((client) => {
       if (client.ws.readyState === WebSocket.OPEN) {
-        const start = Date.now();
-        
         // Simulate typing
         const text = client.doc.getText('default');
         text.insert(text.length, `[User${client.id}] `);
-        
-        // We estimate latency as the time it takes for an update to loop back / settle
-        latencies.push(Date.now() - start);
       }
     });
   }, 200);
@@ -126,7 +129,7 @@ async function runTest(numUsers, WS_URL) {
 
   // Calculate stats
   const avgLatency = latencies.reduce((a, b) => a + b, 0) / (latencies.length || 1);
-  
+
   console.log(`\n📊 RESULTS FOR ${numUsers} USERS:`);
   console.log(`- Avg Sync Latency:  ${avgLatency.toFixed(2)} ms`);
   console.log(`- Total Msgs Sent:   ${totalMessagesSent}`);
@@ -139,11 +142,14 @@ async function runSuite() {
   const TOKEN = await getTestToken();
   const WS_URL = `ws://localhost:5000/yjs?room=${ROOM_ID}&token=${TOKEN}`;
 
-  for (const users of CONCURRENCY_LEVELS) {
-    await runTest(users, WS_URL);
-    await sleep(2000); // Cool down between tests
+  for (let run = 1; run <= 5; run++) {
+    console.log(`\n🌟 --- STARTING TEST RUN ${run}/5 --- 🌟`);
+    for (const users of CONCURRENCY_LEVELS) {
+      await runTest(users, WS_URL);
+      await sleep(2000); // Cool down between tests
+    }
   }
-  console.log(`\n🎉 All Load Tests Complete! You can plot these metrics for your paper.`);
+  console.log(`\n🎉 All 5 Load Test Runs Complete! You can plot these metrics for your paper.`);
 }
 
 runSuite();
