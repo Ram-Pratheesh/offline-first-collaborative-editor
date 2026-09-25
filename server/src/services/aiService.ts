@@ -3,6 +3,41 @@ import { env } from '../config/env.js';
 
 const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
 
+/**
+ * Robust generation wrapper with retries and fallback models.
+ * Automatically switches to older models if the primary model is overloaded (503).
+ */
+const generateWithRetry = async (prompt: string, maxRetries = 2): Promise<string> => {
+  // Use user's model preference first, then fallback to highly available models
+  const models = Array.from(new Set([env.GEMINI_MODEL, 'gemini-3.8-flash', 'gemini-3.6-flash']));
+  let lastError: any;
+
+  for (let i = 0; i <= maxRetries; i++) {
+    for (const modelName of models) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(prompt);
+        return result.response.text();
+      } catch (error: any) {
+        lastError = error;
+        console.warn(`[AI] Model ${modelName} failed on attempt ${i + 1}: ${error.message}`);
+        // If 503 (Overloaded), 429 (Rate Limit), or 404 (Not Found/Deprecated), try the next fallback model
+        if (error.status === 503 || error.status === 429 || error.status === 404 || error.message?.includes('503') || error.message?.includes('429') || error.message?.includes('404')) {
+          continue; 
+        }
+        // For other errors (like safety block), throw immediately
+        throw error;
+      }
+    }
+    // If all models failed, wait before retrying the entire list
+    if (i < maxRetries) {
+      console.warn(`[AI] All models failed, waiting before retry...`);
+      await new Promise(resolve => setTimeout(resolve, 1500 * (i + 1)));
+    }
+  }
+  throw lastError;
+};
+
 export interface ChangeEvent {
   userId: string;
   userName: string;
@@ -29,8 +64,6 @@ export const generateChangeSummary = async (
   documentTitle: string
 ): Promise<ChangeSummary> => {
   try {
-    const model = genAI.getGenerativeModel({ model: env.GEMINI_MODEL });
-
     const prompt = `You are a collaborative document editor assistant. Analyze the following collaborative editing session and generate a clear, human-readable summary.
 
 Document Title: "${documentTitle}"
@@ -65,9 +98,7 @@ Rules:
 7. Keep the tone friendly and informative.
 8. The summary should read like a story of the collaboration session.`;
 
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
+    const text = await generateWithRetry(prompt);
 
     // Parse the JSON response - strip any markdown code block markers
     const cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -93,8 +124,6 @@ export const generateTrackedChangeSummary = async (
   documentTitle: string
 ): Promise<ChangeSummary> => {
   try {
-    const model = genAI.getGenerativeModel({ model: env.GEMINI_MODEL });
-
     // Build a human-readable description of each user's changes
     const userDescriptions = perUserChanges.map((u) => {
       let desc = `${u.userName}:\n`;
@@ -148,9 +177,7 @@ Rules:
 8. Keep importantAdditions as an empty array — do not populate it.
 9. Keep the tone friendly and informative.`;
 
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
+    const text = await generateWithRetry(prompt);
 
     const cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const parsed = JSON.parse(cleanText) as ChangeSummary;
@@ -185,15 +212,13 @@ export const generateDocumentSummary = async (
   title: string
 ): Promise<string> => {
   try {
-    const model = genAI.getGenerativeModel({ model: env.GEMINI_MODEL });
-
     const prompt = `Summarize the following document in 2-3 sentences. Be concise and informative.
 
 Title: "${title}"
 Content: ${content.substring(0, 3000)}`;
 
-    const result = await model.generateContent(prompt);
-    return result.response.text();
+    const text = await generateWithRetry(prompt);
+    return text;
   } catch (error) {
     return 'Unable to generate summary at this time.';
   }

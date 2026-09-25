@@ -80,6 +80,7 @@ const InspectionWorkspacePage: React.FC = () => {
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const reconnectAttemptsRef = useRef(0);
   const snapshotTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const autoAnalyzedLocationsRef = useRef<Set<string>>(new Set());
 
   // ─── Initialize Yjs ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -596,39 +597,6 @@ const InspectionWorkspacePage: React.FC = () => {
       if (navigator.onLine) {
         try {
           await inspectionService.snapshotObservations(id, snapshots);
-
-          // Find all locations with 2+ observations for auto-analysis
-          const locationObsCount = new Map<string, number>();
-          for (const s of snapshots) {
-            locationObsCount.set(s.locationId, (locationObsCount.get(s.locationId) || 0) + 1);
-          }
-
-          const locationsToAnalyze = [...locationObsCount.entries()]
-            .filter(([, count]) => count >= 2)
-            .map(([locId]) => locId);
-
-          if (locationsToAnalyze.length > 0) {
-            useInspectionStore.getState().setAnalyzing(true);
-            try {
-              // Run analysis for each location with enough observations
-              const analysisPromises = locationsToAnalyze.map((locId) =>
-                inspectionService.triggerSemanticAnalysis(id, locId).catch(() => null)
-              );
-              await Promise.all(analysisPromises);
-
-              // Refresh semantic results and report status
-              try {
-                const [results, statusData] = await Promise.all([
-                  inspectionService.getSemanticResults(id),
-                  inspectionService.getReportStatus(id),
-                ]);
-                useInspectionStore.getState().setSemanticResults(results);
-                useInspectionStore.getState().setReportStatus(statusData.status);
-              } catch {}
-            } finally {
-              useInspectionStore.getState().setAnalyzing(false);
-            }
-          }
         } catch {}
       }
     }, 5000);
@@ -644,18 +612,16 @@ const InspectionWorkspacePage: React.FC = () => {
       const snapshots: any[] = [];
       observationsMap.forEach((val, key) => {
         const meta = val as any;
-        if (meta.locationId === selectedLocationId) {
-          const fragment = ydocRef.current!.getXmlFragment(`obs-${key}`);
-          const plainText = fragment.toString().replace(/<[^>]*>/g, '').trim();
-          snapshots.push({
-            observationId: key,
-            locationId: meta.locationId,
-            authorId: meta.authorId,
-            authorName: meta.authorName,
-            plainTextContent: plainText,
-            connectivityState: meta.connectivityState,
-          });
-        }
+        const fragment = ydocRef.current!.getXmlFragment(`obs-${key}`);
+        const plainText = fragment.toString().replace(/<[^>]*>/g, '').trim();
+        snapshots.push({
+          observationId: key,
+          locationId: meta.locationId,
+          authorId: meta.authorId,
+          authorName: meta.authorName,
+          plainTextContent: plainText,
+          connectivityState: meta.connectivityState,
+        });
       });
       if (snapshots.length > 0) {
         await inspectionService.snapshotObservations(id, snapshots).catch(() => {});
@@ -675,6 +641,21 @@ const InspectionWorkspacePage: React.FC = () => {
       setAnalyzing(false);
     }
   }, [id, selectedLocationId, setAnalyzing, setSemanticResults, setReportStatus, addToast]);
+
+  const handleObservationBlur = useCallback(() => {
+    if (!selectedLocationId) return;
+    
+    // Only proceed if we have 2+ observations for this location
+    const obs = useInspectionStore.getState().observations.filter((o) => o.locationId === selectedLocationId);
+    if (obs.length >= 2) {
+      if (!autoAnalyzedLocationsRef.current.has(selectedLocationId)) {
+        autoAnalyzedLocationsRef.current.add(selectedLocationId);
+        
+        // Trigger semantic analysis once user finishes typing the 2nd observation
+        handleTriggerAnalysis();
+      }
+    }
+  }, [selectedLocationId, handleTriggerAnalysis]);
 
   // ─── Human Decision ────────────────────────────────────────────────────────
   const handleDecision = useCallback(
@@ -1210,13 +1191,14 @@ const InspectionWorkspacePage: React.FC = () => {
                       currentUserId={user?._id || ''}
                       isFinalized={isFinalized}
                       onDelete={handleDeleteObservation}
+                      onBlur={handleObservationBlur}
                     />
                   ))
                 )}
               </div>
 
               {/* Semantic Reconciliation */}
-              {currentObservations.length >= 2 && (
+              {(currentSemanticResults.length > 0 || isAnalyzing) && (
                 <SemanticReconciliationPanel
                   results={currentSemanticResults}
                   observations={currentObservations}

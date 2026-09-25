@@ -19,6 +19,7 @@ interface ObservationCardProps {
   currentUserId: string;
   isFinalized: boolean;
   onDelete?: (id: string) => void;
+  onBlur?: (id: string) => void;
 }
 
 /**
@@ -53,6 +54,7 @@ export const ObservationCard: React.FC<ObservationCardProps> = ({
   currentUserId,
   isFinalized,
   onDelete,
+  onBlur,
 }) => {
   const isOwn = observation.authorId === currentUserId;
   const fragmentKey = `obs-${observation.observationId}`;
@@ -83,8 +85,11 @@ export const ObservationCard: React.FC<ObservationCardProps> = ({
         },
       },
       immediatelyRender: false,
+      onBlur: () => {
+        if (onBlur) onBlur(observation.observationId);
+      },
     },
-    [fragment, isOwn, isFinalized]
+    [fragment, isOwn, isFinalized, onBlur, observation.observationId]
   );
 
   const createdDate = new Date(observation.createdAt);
